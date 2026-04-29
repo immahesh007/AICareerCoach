@@ -1,0 +1,18 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+.env
+
+# Node
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+
+# Uploaded files (keep directory, ignore contents)
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# OS
+.DS_Store

@@ -1,0 +1,104 @@
+Build a new feature for the AI Resume + Job Match Coach application.
+
+Requirement:
+Create a professional landing page with a resume upload feature.
+
+Feature Details:
+1. Design a modern, clean, responsive landing page.
+2. Main headline should clearly explain the product helps users improve resumes and match jobs using AI.
+3. Add a prominent CTA section with:
+   - Upload Resume button
+   - Support for PDF and DOCX files only
+4. Show drag-and-drop upload area along with manual file select option.
+5. Display accepted file formats: PDF, DOCX.
+6. Validate file type before upload.
+7. Show upload progress indicator.
+8. Show success message after upload.
+9. Show error message for invalid file type or failed upload.
+10. Include sections below hero area:
+   - How It Works (3 simple steps)
+   - Benefits of using AI Resume Coach
+   - Testimonials / trust section
+11. Make UI mobile responsive and visually premium.
+12. Use clean animations and modern styling.
+
+Project Structure Requirements:
+1. Add all frontend/UI code inside the frontend folder.
+2. Add all backend/API/upload related code inside the backend folder.
+3. Keep components modular and maintain clean folder structure.
+4. Separate reusable UI components, pages, services, and utilities properly.
+
+Technical Requirements:
+Frontend:
+- Next.js + React + Tailwind CSS
+- Component-based structure
+- Use reusable upload component
+- Drag-and-drop upload support
+- API integration ready
+
+Backend:
+- FastAPI (Python)
+- Endpoint: POST /upload-resume
+- Accept multipart PDF/DOCX uploads
+- Validate file types
+- Store uploaded files
+- Return success response with file_id and filename
+- Handle upload errors properly
+
+Suggested Folder Structure:
+
+frontend/
+  app/
+  components/
+  services/
+  utils/
+
+backend/
+  routes/
+  services/
+  uploads/
+  main.py
+
+Deliverables:
+- Landing page UI
+- Resume upload component
+- Validation logic
+- Backend upload API
+- Clean structured codebase
+- Ready to run locally
+
+Goal:
+A user should land on the page and immediately upload their resume in PDF/DOCX format with a smooth and professional experience.
+
+# Save uploaded resume to db
+Implement the service logic for an existing upload-resume REST API. This task involves integrating AWS S3 for file storage and PostgreSQL for metadata persistence.
+
+1. Database Schema (PostgreSQL)
+Create a table named resume_metadata with the following specification:
+id: UUID or String (Primary Key).
+user_id: String (Foreing Key Indexed).
+s3_key: String (Unique; stores the path/URL returned from S3).
+status: Enum with values PENDING, SUCCESS, FAILED.
+uploaded_at: Timestamp (Defaults to current time).
+size: Float (File size in bytes or KB).
+
+2. Functional Requirements & Logic Flow
+Implement a service function that handles the following sequence:
+Identity Resolution: Check if a user_id is provided. If the user is unregistered (no ID provided), generate a dummy user_id (e.g., guest_[unique_suffix]) to associate with the resume.
+Initial Persistence: Create a record in resume_metadata with the status set to PENDING.
+
+3. S3 Integration: * Accept .pdf and .docx file types.
+Upload the file to an S3 bucket.
+Capture the returned s3_key or Object URL.
+
+4. Finalize Record:
+On Success: Update the database record with the s3_key, the calculated file size, and change the status to SUCCESS.
+On Failure: If the S3 upload fails, update the database status to FAILED and log the error.
+
+3. Technical Constraints
+Ensure the file size is calculated correctly before or during the upload.
+Use a clean, modular approach (e.g., separating the S3 client logic from the database repository logic).
+Provide the SQL DDL for the table and the Enum type.
+
+Output Expectations:
+SQL migration script for the PostgreSQL table.
