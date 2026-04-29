@@ -1,8 +1,8 @@
 import uuid
 from enum import Enum as PyEnum
 
-from sqlalchemy import Column, Enum, Float, Index, Text, TIMESTAMP
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Column, Enum, Float, ForeignKey, Index, Text, TIMESTAMP
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.sql import func
 
@@ -29,3 +29,23 @@ class ResumeMetadata(Base):
     size = Column(Float, nullable=True)
 
     __table_args__ = (Index("ix_resume_metadata_user_id", "user_id"),)
+
+
+class ParsedResume(Base):
+    __tablename__ = "parsed_resumes"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    resume_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("resume_metadata.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    user_id = Column(Text, nullable=False)
+    raw_text = Column(Text, nullable=True)
+    parsed_data = Column(JSONB, nullable=False)
+    parsed_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+
+    __table_args__ = (
+        Index("ix_parsed_resumes_resume_id", "resume_id"),
+        Index("ix_parsed_resumes_user_id", "user_id"),
+    )

@@ -102,3 +102,59 @@ Provide the SQL DDL for the table and the Enum type.
 
 Output Expectations:
 SQL migration script for the PostgreSQL table.
+
+# Parse resume
+Build a production-grade Resume Parsing System.
+
+## Goal
+The current upload-resume API should extracts raw text, uses an LLM to convert resume text into structured JSON, validates the output, and stores parsed data for downstream features.
+
+The parsed output must support:
+1. ATS Score
+2. Resume strengths
+3. Weak sections
+4. Missing keywords
+5. Formatting suggestions
+6. Job Match Score
+7. Resume Tailoring
+8. Interview Question Generation
+
+---
+
+## Tech Stack
+
+Frontend:
+- Next.js
+- React
+- Tailwind CSS
+
+Backend:
+- FastAPI (Python)
+
+Database:
+- PostgreSQL
+
+Storage:
+- AWS S3
+
+Libraries:
+- PyMuPDF (PDF parsing)
+- python-docx (DOCX parsing)
+- Pydantic
+- SQLAlchemy
+- Alembic
+
+LLM:
+- OpenAI / Claude API
+
+---
+
+## Folder Structure Requirement
+
+Put all frontend code inside:
+
+frontend/
+
+Put all backend code inside:
+
+backend/
