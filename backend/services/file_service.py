@@ -5,8 +5,8 @@ from typing import Optional
 from fastapi import HTTPException, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db.repositories import resume_repo
-from services import s3_service
+from db.repositories import resume_repo, parsed_resume_repo
+from services import s3_service, extraction_service, llm_service
 
 logger = logging.getLogger(__name__)
 
@@ -54,10 +54,30 @@ async def save_upload(
 
     await resume_repo.update_success(db, file_id=file_id, s3_key=s3_key)
 
-    return {
+    # Extraction pipeline — non-fatal; savepoint isolates DB failures from the main transaction
+    parsed_data = None
+    try:
+        raw_text = await extraction_service.extract_text(content, content_type)
+        parsed_data = await llm_service.extract_resume_data(raw_text)
+        async with db.begin_nested():  # SAVEPOINT: rollback only this block on error
+            await parsed_resume_repo.insert_parsed(
+                db,
+                resume_id=file_id,
+                user_id=resolved_user_id,
+                raw_text=raw_text,
+                parsed_data=parsed_data,
+            )
+    except Exception as exc:
+        logger.error("Parsing pipeline failed for file_id=%s: %s", file_id, exc, exc_info=True)
+        parsed_data = None
+
+    result: dict = {
         "file_id": str(file_id),
         "filename": file.filename,
         "s3_key": s3_key,
         "user_id": resolved_user_id,
         "message": "Resume uploaded successfully",
     }
+    if parsed_data is not None:
+        result["parsed_data"] = parsed_data
+    return result
