@@ -158,3 +158,57 @@ frontend/
 Put all backend code inside:
 
 backend/
+
+I am building a new feature, It should only write UI code for now. Later a new backend API will be integrated to this UI.
+
+Frontend Implementation Details:
+Landing Page UI: Add a "Know ATS" action button.
+
+Logic & State:
+
+Enabled: The button becomes active only after a resume has been successfully uploaded.
+
+Disabled: If no resume is present, the button is locked.
+
+User Feedback: Implement a hover tooltip for the disabled state that reads: "Upload resume to know your ATS."
+
+Architecture:
+
+Create a new service file: frontend/services/ats.js (or .ts).
+
+Styling: Ensure the new component strictly adheres to the existing design system and CSS variables for visual consistency.
+
+Backend:
+Endpoint: POST /know-ats
+Functional Requirements:
+
+Input Validation: The API must accept a mandatory jobDescription string in the request body.
+
+Constraint: Minimum length of 1 character; maximum length of 5,000 characters.
+Error Handling: Return a 400 Bad Request if the field is missing or exceeds the character limit.
+
+Data Transformation: Convert the raw Job Description (JD) text into a structured JSON format, utilizing the existing parsing logic established in the upload-resume API.
+Database Persistence: Update the parsed_resume table by saving the structured JSON into a new column specifically named parsedJD.
+ATS Logic Placeholder: Implement a designated placeholder block where the ATS scoring algorithm will be integrated in the next phase.
+
+Frontend:
+Bind the "Know ATS" button to a click handler that sends the Job Description (JD) text to the backend.
+Implement a loading state on the button to provide visual feedback during the API request.
+Ensure the request is only fired if the jobDescription is within the 1-5,000 character range.
+
+This measures how closely the "vibe" and "domain" of the resume match the JD.
+
+Generate Embeddings: Convert your Resume JSON string and JD JSON string into vectors.
+
+Calculate Cosine Similarity: Use a math library to find the distance between these two vectors.
+
+The Result: A score between 0.0 and 1.0 representing overall semantic alignment.
+
+Part B: The LLM Scorer (Qualitative)
+This identifies specific "Hard Matches" and "Gaps."
+
+Prompting: Feed the LLM both JSONs.
+
+Logic: Ask the LLM to perform a "Gap Analysis" (e.g., "The JD requires 3 years of AWS; the resume shows 1 year. Deduct 10 points.")
+
+The Result: A detailed score based on specific constraints and logic.

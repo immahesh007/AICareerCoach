@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from db.connection import engine
+from routes.ats import router as ats_router
 from routes.resume import router as resume_router
 
 
@@ -24,6 +25,7 @@ app.add_middleware(
 )
 
 app.include_router(resume_router, prefix="/api")
+app.include_router(ats_router, prefix="/api")
 
 
 @app.get("/health")

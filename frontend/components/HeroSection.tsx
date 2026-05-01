@@ -1,6 +1,12 @@
+'use client';
+
+import { useState } from 'react';
 import UploadArea from './UploadArea';
+import KnowATSButton from './KnowATSButton';
 
 export default function HeroSection() {
+  const [uploadedFileId, setUploadedFileId] = useState<string | null>(null);
+
   return (
     <section className="relative min-h-screen bg-gradient-to-br from-indigo-950 via-[#1e1060] to-indigo-900 flex flex-col items-center justify-center overflow-hidden pt-24 pb-20">
       {/* Background orbs */}
@@ -28,7 +34,15 @@ export default function HeroSection() {
         </p>
 
         {/* Upload component */}
-        <UploadArea />
+        <UploadArea
+          onSuccess={(fileId) => setUploadedFileId(fileId)}
+          onReset={() => setUploadedFileId(null)}
+        />
+
+        {/* Know ATS CTA */}
+        <div className="mt-6">
+          <KnowATSButton fileId={uploadedFileId} />
+        </div>
 
         {/* Trust indicators */}
         <div className="mt-10 flex flex-wrap items-center justify-center gap-6 text-white/50 text-sm">

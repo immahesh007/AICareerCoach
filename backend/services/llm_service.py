@@ -31,6 +31,45 @@ Return ONLY a valid JSON object with these fields (omit any field not present in
 No explanation. No markdown. No code fences. JSON only."""
 
 
+_JD_SYSTEM = """You are a job description parser. Extract structured information.
+
+Return ONLY a valid JSON object with these fields (omit any not present):
+{
+  "job_title": "string",
+  "company": "string",
+  "required_skills": ["string"],
+  "preferred_skills": ["string"],
+  "experience_years": 0,
+  "education_requirements": "string",
+  "responsibilities": ["string"],
+  "keywords": ["string"]
+}
+
+No explanation. No markdown. No code fences. JSON only."""
+
+
+async def extract_jd_data(raw_text: str) -> dict:
+    text = raw_text[:MAX_TEXT_CHARS]
+    if len(raw_text) > MAX_TEXT_CHARS:
+        logger.warning("JD text truncated from %d to %d chars for LLM", len(raw_text), MAX_TEXT_CHARS)
+
+    response = await _client.chat(
+        model=settings.OLLAMA_MODEL,
+        format="json",
+        messages=[
+            {"role": "system", "content": _JD_SYSTEM},
+            {"role": "user", "content": f"Parse this job description:\n\n{text}"},
+        ],
+    )
+
+    raw = response.message.content
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        logger.warning("Ollama returned non-JSON for JD; returning empty dict. Raw: %.200s", raw)
+        return {}
+
+
 async def extract_resume_data(raw_text: str) -> dict:
     text = raw_text[:MAX_TEXT_CHARS]
     if len(raw_text) > MAX_TEXT_CHARS:

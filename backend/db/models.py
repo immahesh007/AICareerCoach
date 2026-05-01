@@ -43,6 +43,7 @@ class ParsedResume(Base):
     user_id = Column(Text, nullable=False)
     raw_text = Column(Text, nullable=True)
     parsed_data = Column(JSONB, nullable=False)
+    parsed_jd = Column(JSONB, nullable=True)
     parsed_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
 
     __table_args__ = (

@@ -6,7 +6,12 @@ import { uploadResume } from '@/services/uploadService';
 
 type Phase = 'idle' | 'dragging' | 'uploading' | 'success' | 'error';
 
-export default function UploadArea() {
+interface UploadAreaProps {
+  onSuccess?: (fileId: string) => void;
+  onReset?: () => void;
+}
+
+export default function UploadArea({ onSuccess, onReset }: UploadAreaProps = {}) {
   const [phase, setPhase] = useState<Phase>('idle');
   const [progress, setProgress] = useState(0);
   const [statusMsg, setStatusMsg] = useState('');
@@ -27,11 +32,12 @@ export default function UploadArea() {
       const result = await uploadResume(file, setProgress);
       setStatusMsg(result.message);
       setPhase('success');
+      onSuccess?.(result.file_id);
     } catch (err) {
       setStatusMsg(err instanceof Error ? err.message : 'Upload failed. Please try again.');
       setPhase('error');
     }
-  }, []);
+  }, [onSuccess]);
 
   const onDrop = useCallback(
     (e: DragEvent<HTMLDivElement>) => {
@@ -59,6 +65,7 @@ export default function UploadArea() {
     setStatusMsg('');
     setUploadedName('');
     if (inputRef.current) inputRef.current.value = '';
+    onReset?.();
   };
 
   if (phase === 'uploading') {
