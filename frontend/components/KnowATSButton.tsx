@@ -6,11 +6,11 @@ import { analyzeATS, ATSResult } from '@/services/ats';
 
 const ATS_STORAGE_KEY = 'ats_result';
 
-interface KnowATSButtonProps {
+interface UnlockMatchReportProps {
   fileId: string | null;
 }
 
-export default function KnowATSButton({ fileId }: KnowATSButtonProps) {
+export default function UnlockMatchReport({ fileId }: UnlockMatchReportProps) {
   const router = useRouter();
   const [jdText, setJdText] = useState('');
   const [loading, setLoading] = useState(false);
