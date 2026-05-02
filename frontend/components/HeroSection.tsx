@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import UploadArea from './UploadArea';
-import KnowATSButton from './KnowATSButton';
+import UnlockMatchReport from './UnlockMatchReport';
 
 export default function HeroSection() {
   const [uploadedFileId, setUploadedFileId] = useState<string | null>(null);
@@ -39,7 +39,7 @@ export default function HeroSection() {
             onSuccess={(fileId) => setUploadedFileId(fileId)}
             onReset={() => setUploadedFileId(null)}
           />
-          <KnowATSButton fileId={uploadedFileId} />
+          <UnlockMatchReport fileId={uploadedFileId} />
         </div>
 
         {/* Trust indicators */}
