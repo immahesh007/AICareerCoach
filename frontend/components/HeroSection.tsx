@@ -1,13 +1,19 @@
+'use client';
+
+import { useState } from 'react';
 import UploadArea from './UploadArea';
+import KnowATSButton from './KnowATSButton';
 
 export default function HeroSection() {
+  const [uploadedFileId, setUploadedFileId] = useState<string | null>(null);
+
   return (
     <section className="relative min-h-screen bg-gradient-to-br from-indigo-950 via-[#1e1060] to-indigo-900 flex flex-col items-center justify-center overflow-hidden pt-24 pb-20">
       {/* Background orbs */}
       <div className="absolute -top-40 -right-40 w-[600px] h-[600px] rounded-full bg-violet-700/20 blur-[100px] pointer-events-none" />
       <div className="absolute -bottom-40 -left-40 w-[500px] h-[500px] rounded-full bg-indigo-600/20 blur-[100px] pointer-events-none" />
 
-      <div className="relative z-10 w-full max-w-3xl mx-auto px-6 text-center">
+      <div className="relative z-10 w-full max-w-5xl mx-auto px-6 text-center">
         {/* Badge */}
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 text-indigo-200 text-sm font-medium mb-8">
           <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse" />
@@ -27,8 +33,14 @@ export default function HeroSection() {
           Upload your resume and let our AI coach analyze it, match you with ideal positions, and deliver personalized feedback to make you stand out.
         </p>
 
-        {/* Upload component */}
-        <UploadArea />
+        {/* Two-column: resume upload left, job description + CTA right */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
+          <UploadArea
+            onSuccess={(fileId) => setUploadedFileId(fileId)}
+            onReset={() => setUploadedFileId(null)}
+          />
+          <KnowATSButton fileId={uploadedFileId} />
+        </div>
 
         {/* Trust indicators */}
         <div className="mt-10 flex flex-wrap items-center justify-center gap-6 text-white/50 text-sm">

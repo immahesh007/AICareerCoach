@@ -1,0 +1,5 @@
+#to start postgresql
+brew services start postgresql@16
+brew services list
+
+psql -U immahesh -d aicareercoach

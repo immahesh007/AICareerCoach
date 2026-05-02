@@ -1,6 +1,7 @@
 import uuid
 from typing import Optional
 
+from sqlalchemy import select, update as sa_update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.models import ParsedResume
@@ -25,3 +26,26 @@ async def insert_parsed(
     await db.flush()
     await db.refresh(record)
     return record
+
+
+async def update_parsed_jd(
+    db: AsyncSession,
+    *,
+    resume_id: uuid.UUID,
+    parsed_jd: dict,
+) -> None:
+    await db.execute(
+        sa_update(ParsedResume)
+        .where(ParsedResume.resume_id == resume_id)
+        .values(parsed_jd=parsed_jd)
+    )
+
+
+async def get_parsed_by_resume_id(
+    db: AsyncSession,
+    resume_id: uuid.UUID,
+) -> Optional[ParsedResume]:
+    result = await db.execute(
+        select(ParsedResume).where(ParsedResume.resume_id == resume_id)
+    )
+    return result.scalar_one_or_none()
