@@ -164,10 +164,10 @@ export default function ATSDashboardPage() {
 
           <ScoreRing score={result.ats_score} />
 
-          <h1 className={`text-6xl md:text-7xl font-black mt-6 tabular-nums ${colors.text}`}>
+          {/* <h1 className={`text-6xl md:text-7xl font-black mt-6 tabular-nums ${colors.text}`}>
             {result.ats_score}
             <span className="text-3xl font-bold text-white/40">%</span>
-          </h1>
+          </h1> */}
           <p className="text-white/60 text-lg mt-1">ATS Compatibility Score</p>
 
           <span className={`mt-4 px-4 py-1.5 rounded-full text-sm font-semibold border ${colors.badge}`}>
