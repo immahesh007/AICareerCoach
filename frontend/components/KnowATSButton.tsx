@@ -81,7 +81,7 @@ export default function KnowATSButton({ fileId }: KnowATSButtonProps) {
         <div className="relative inline-flex group">
           {!isUploaded && (
             <div className="absolute -top-10 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-lg bg-white/15 backdrop-blur-sm border border-white/20 text-white/90 text-xs font-medium whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
-              Upload resume to know your ATS.
+              Upload resume to Unlock Your Match Report.
               <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-white/15" />
             </div>
           )}
@@ -116,7 +116,7 @@ export default function KnowATSButton({ fileId }: KnowATSButtonProps) {
                 />
               </svg>
             )}
-            {loading ? 'Analyzing…' : 'Know ATS'}
+            {loading ? 'Analyzing…' : 'Unlock Match Report'}
           </button>
         </div>
 
