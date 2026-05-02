@@ -90,6 +90,9 @@ You must return your analysis strictly as a valid JSON object matching the follo
 
 {
   "ats_score": [A final weighted integer from 0-100 combining skill match, experience match, and keyword presence],
+  "match_percentage": [An integer 0-100 representing the percentage of JD required_skills and keywords the candidate demonstrably meets],
+  "matching_skills": [A list of skill or keyword strings present in both the resume and the JD required_skills/keywords],
+  "experience_fit": [A single concise sentence stating whether the candidate's years and seniority level align with the role requirements, and why],
   "strengths": [A list of 3 strings detailing the candidate's top competitive advantages for this specific role],
   "weaknesses": [A list of strings detailing sections that lack depth, require more quantification, or fall short of the JD],
   "missing_keywords": [A list of specific tools, skills, or terminologies from the JD that are entirely absent from the resume],
@@ -131,6 +134,9 @@ async def evaluate_ats_match(
         logger.warning("LLM returned non-JSON for ATS eval. Raw: %.200s", raw)
         return {
             "ats_score": round(semantic_score * 100),
+            "match_percentage": round(semantic_score * 100),
+            "matching_skills": [],
+            "experience_fit": "",
             "strengths": [],
             "weaknesses": [],
             "missing_keywords": [],

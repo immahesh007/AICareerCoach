@@ -174,6 +174,20 @@ export default function ATSDashboardPage() {
             {colors.label}
           </span>
 
+          {/* Match percentage bar */}
+          <div className="mt-5 w-full max-w-xs flex flex-col items-center gap-2">
+            <div className="flex justify-between w-full text-xs text-white/50 font-medium">
+              <span>JD Match</span>
+              <span className="text-white font-semibold">{result.match_percentage ?? 0}%</span>
+            </div>
+            <div className="w-full bg-white/10 rounded-full h-2 overflow-hidden">
+              <div
+                className="bg-gradient-to-r from-indigo-400 to-violet-400 h-2 rounded-full transition-all duration-700"
+                style={{ width: `${result.match_percentage ?? 0}%` }}
+              />
+            </div>
+          </div>
+
           <button
             onClick={() => router.push('/')}
             className="mt-8 px-6 py-2.5 rounded-full bg-white/10 border border-white/20 text-indigo-200 text-sm font-medium hover:bg-white/15 transition-colors inline-flex items-center gap-2"
@@ -225,6 +239,35 @@ export default function ATSDashboardPage() {
             }
           >
             <BulletList items={result.weaknesses} variant="negative" />
+          </SectionCard>
+
+          {/* Matching Skills */}
+          <SectionCard
+            title="Matching Skills"
+            icon={
+              <svg className="w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+              </svg>
+            }
+          >
+            <TagList
+              items={result.matching_skills}
+              color="bg-emerald-500/10 text-emerald-300 border-emerald-500/30"
+            />
+          </SectionCard>
+
+          {/* Experience Fit */}
+          <SectionCard
+            title="Experience Fit"
+            icon={
+              <svg className="w-5 h-5 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+            }
+          >
+            <p className="text-indigo-100 text-sm leading-relaxed">
+              {result.experience_fit || 'No experience assessment available.'}
+            </p>
           </SectionCard>
 
           {/* Missing Keywords — full width */}
