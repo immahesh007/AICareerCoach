@@ -34,8 +34,8 @@ export default function KnowATSButton({ fileId }: KnowATSButtonProps) {
   }
 
   return (
-    <div className="w-full flex flex-col gap-3">
-      <div className="relative">
+    <div className="h-full flex flex-col gap-3">
+      <div className="relative flex-1">
         <textarea
           value={jdText}
           onChange={(e) => {
@@ -50,15 +50,14 @@ export default function KnowATSButton({ fileId }: KnowATSButtonProps) {
               ? 'Paste the job description here…'
               : 'Upload your resume first, then paste a job description here.'
           }
-          rows={6}
-          className={`w-full rounded-xl px-4 py-3 text-sm bg-white/10 backdrop-blur-sm border text-white placeholder-white/40 resize-none focus:outline-none focus:ring-2 transition-colors ${
+          className={`absolute inset-0 rounded-xl px-4 pb-7 pt-3 text-sm bg-white/10 backdrop-blur-sm border text-white placeholder-white/40 resize-none focus:outline-none focus:ring-2 transition-colors ${
             overLimit
               ? 'border-red-400/60 focus:ring-red-400/40'
               : 'border-white/20 focus:ring-indigo-400/40'
           } ${!isUploaded || loading ? 'opacity-50 cursor-not-allowed' : ''}`}
         />
         <span
-          className={`absolute bottom-3 right-3 text-xs tabular-nums ${
+          className={`absolute bottom-3 right-3 text-xs tabular-nums z-10 ${
             overLimit ? 'text-red-400' : 'text-white/40'
           }`}
         >

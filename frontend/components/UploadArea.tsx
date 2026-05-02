@@ -69,17 +69,24 @@ export default function UploadArea({ onSuccess, onReset }: UploadAreaProps = {})
   };
 
   if (phase === 'uploading') {
+    const done = progress === 100;
     return (
       <Card border="border-indigo-400/50">
         <Spinner />
-        <p className="text-white font-semibold text-lg">Uploading {uploadedName}</p>
-        <p className="text-indigo-200 text-sm">{progress}% complete</p>
-        <div className="w-full bg-white/20 rounded-full h-2 overflow-hidden">
-          <div
-            className="bg-gradient-to-r from-indigo-400 to-violet-400 h-2 rounded-full transition-all duration-300"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
+        <p className="text-white font-semibold text-lg">
+          {done ? 'Generating insights…' : `Uploading ${uploadedName}`}
+        </p>
+        <p className="text-indigo-200 text-sm">
+          {done ? 'Parsing your resume, hang tight…' : `${progress}% complete`}
+        </p>
+        {!done && (
+          <div className="w-full bg-white/20 rounded-full h-2 overflow-hidden">
+            <div
+              className="bg-gradient-to-r from-indigo-400 to-violet-400 h-2 rounded-full transition-all duration-300"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+        )}
       </Card>
     );
   }
@@ -131,7 +138,7 @@ export default function UploadArea({ onSuccess, onReset }: UploadAreaProps = {})
       onDragOver={onDragOver}
       onDragLeave={() => setPhase('idle')}
       onClick={() => inputRef.current?.click()}
-      className={`relative w-full rounded-2xl border-2 border-dashed p-10 text-center cursor-pointer transition-all duration-300 ${
+      className={`relative w-full h-full rounded-2xl border-2 border-dashed p-12 text-center cursor-pointer transition-all duration-300 ${
         phase === 'dragging'
           ? 'border-violet-400 bg-white/20 scale-[1.01]'
           : 'border-white/30 bg-white/10 hover:border-indigo-400 hover:bg-white/15'
@@ -169,7 +176,7 @@ export default function UploadArea({ onSuccess, onReset }: UploadAreaProps = {})
 
 function Card({ border, children }: { border: string; children: React.ReactNode }) {
   return (
-    <div className={`w-full rounded-2xl border-2 ${border} bg-white/10 backdrop-blur-sm p-10 flex flex-col items-center gap-3 text-center`}>
+    <div className={`w-full h-full rounded-2xl border-2 ${border} bg-white/10 backdrop-blur-sm p-12 flex flex-col items-center justify-center gap-3 text-center`}>
       {children}
     </div>
   );

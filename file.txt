@@ -212,3 +212,37 @@ Prompting: Feed the LLM both JSONs.
 Logic: Ask the LLM to perform a "Gap Analysis" (e.g., "The JD requires 3 years of AWS; the resume shows 1 year. Deduct 10 points.")
 
 The Result: A detailed score based on specific constraints and logic.
+
+# ATS logic
+**Role & Objective:**
+You are an expert AI Backend Engineer. Your task is to build a hybrid ATS (Applicant Tracking System) scoring pipeline that compares a parsed Resume JSON against a parsed Job Description (JD) JSON. 
+
+**System Architecture:**
+
+**Part A: The Vector Engine (Quantitative Analysis)**
+1. Implement a local embedding pipeline using the `BGE-M3` model (optimized for CPU/lightweight execution).
+2. Convert the Resume JSON string and the JD JSON string into vector embeddings.
+3. Calculate the Cosine Similarity between the two vectors to generate a semantic alignment score (0.0 to 1.0).
+
+**Part B: The LLM Evaluation (Qualitative Analysis & Final Audit)**
+1. Integrate with `llama3.2:latest` (currently running locally, later migrating to vLLM on RunPod/Lambda Labs).
+2. Send the parsed Resume JSON, parsed JD JSON, and the Quantitative Score from Part A to the LLM to act as a Senior Technical Recruiter.
+3. The LLM must return a structured JSON response extracting specific insights (schema provided below).
+
+**Database Implementation:**
+Create an SQL query and the corresponding ORM model (e.g., SQLAlchemy) for a new table to store the final evaluation records. The table must include:
+* `id` (Primary Key, UUID)
+* `resume_id` (Foreign Key, UUID)
+* `timestamp` (DateTime, default to current time)
+* `ats_score` (Integer)
+* `strengths` (JSON/Array of strings)
+* `weaknesses` (JSON/Array of strings)
+* `missing_keywords` (JSON/Array of strings)
+* `formatting_feedback` (Text/JSON)
+* `match_report` (Text)
+
+Please write the Python code to orchestrate this pipeline, including the embedding generation, the LLM API call, and the database schema.
+A wrapper API for this functionality is already created with name "/know-ats".
+Add the code here 
+# ── PLACEHOLDER: ATS scoring algorithm goes here ──────────────────────
+in the @routes/ats.py know_ats function

@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.connection import get_db
 from db.repositories.parsed_resume_repo import update_parsed_jd
+from services.ats_service import compute_ats_score
 from services.llm_service import extract_jd_data
 
 router = APIRouter()
@@ -30,12 +31,16 @@ async def know_ats(
 
     await update_parsed_jd(db, resume_id=resume_uuid, parsed_jd=parsed_jd)
 
-    # ── PLACEHOLDER: ATS scoring algorithm goes here ──────────────────────
-    # ats_score = await compute_ats_score(parsed_jd, resume_id)
-    # ─────────────────────────────────────────────────────────────────────
+    evaluation = await compute_ats_score(db, resume_id=resume_uuid, parsed_jd=parsed_jd)
 
     return {
         "file_id": request.file_id,
         "parsed_jd": parsed_jd,
-        "message": "Job description parsed successfully. ATS scoring coming soon.",
+        "ats_score": evaluation.get("ats_score", 0),
+        "strengths": evaluation.get("strengths", []),
+        "weaknesses": evaluation.get("weaknesses", []),
+        "missing_keywords": evaluation.get("missing_keywords", []),
+        "formatting_feedback": evaluation.get("formatting_feedback", ""),
+        "match_report": evaluation.get("match_report", ""),
+        "message": "ATS analysis complete.",
     }
