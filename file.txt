@@ -246,3 +246,23 @@ A wrapper API for this functionality is already created with name "/know-ats".
 Add the code here 
 # ── PLACEHOLDER: ATS scoring algorithm goes here ──────────────────────
 in the @routes/ats.py know_ats function
+
+# Analysis Dashboard
+Build a frontend React component for an ATS Analysis Dashboard
+Step 1: The Trigger. Create a view with a 'Know ATS' button. 
+When clicked, it calls the know-ats API. Wait for the response.
+Do not display a 'View Dashboard' navigation button unless the API returns a 200 OK status.
+
+Step 2: The Dashboard Page. Once on the dashboard page, consume the JSON response.
+Display the ats_score at the very top as a massive <h1> hero element.
+Below it, create a well-organized grid or list layout to display the remaining data fields: match_report, strengths, weaknesses, missing_keywords, and formatting_feedback.
+
+Step 3: Styling & UI Consistency. It is critical that you write the CSS/styling (using Tailwind, styled-components, or standard CSS, depending on my project setup) to perfectly match the existing design system.
+Reuse the established color scheme, typography, and spacing conventions of the app. Do not invent a new UI theme; make it look like a native extension of the current application."
+
+# Column addition to the Analysis Report
+We are expanding our existing ats_service pipeline. It currently compares a Resume and JD to generate an ats_score, strengths, weaknesses, missing_keywords, formatting_feedback, and match_report, saving them to the ats_evaluations table and showing them on a frontend dashboard.
+Please generate the code to add three new metrics to this entire stack: match_percentage (int), matching_skills (array of strings), and experience_fit (string).
+Task 1: LLM Prompt & Schema: Update the JSON output schema and the system prompt for the LLM API call to evaluate and return these three new fields.
+Task 2: Database Model: Write the SQL migration or ORM code to add these three new columns to the existing ats_evaluations table.
+Task 3: Frontend Component: Update the React/Next.js dashboard component to map and display these new fields within the existing UI layout, strictly adhering to the current design system and color schemes.

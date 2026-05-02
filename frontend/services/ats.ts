@@ -2,6 +2,9 @@ export interface ATSResult {
   file_id: string;
   parsed_jd: Record<string, unknown>;
   ats_score: number;
+  match_percentage: number;
+  matching_skills: string[];
+  experience_fit: string;
   strengths: string[];
   weaknesses: string[];
   missing_keywords: string[];
