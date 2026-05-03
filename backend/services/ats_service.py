@@ -26,7 +26,8 @@ def _resume_to_text(data: dict) -> str:
     if s := data.get("summary"):
         parts.append(s)
     if skills := data.get("skills"):
-        parts.append("Skills: " + ", ".join(skills))
+        skill_strs = [s if isinstance(s, str) else str(s) for s in skills]
+        parts.append("Skills: " + ", ".join(skill_strs))
     for exp in data.get("experience", []):
         parts.append(
             f"{exp.get('title', '')} at {exp.get('company', '')} — {exp.get('description', '')}"
@@ -34,7 +35,11 @@ def _resume_to_text(data: dict) -> str:
     for proj in data.get("projects", []):
         parts.append(f"Project {proj.get('name', '')}: {proj.get('description', '')}")
     if certs := data.get("certifications"):
-        parts.append("Certifications: " + ", ".join(certs))
+        cert_strs = [
+            c if isinstance(c, str) else c.get("name") or c.get("title") or str(c)
+            for c in certs
+        ]
+        parts.append("Certifications: " + ", ".join(cert_strs))
     return " ".join(parts) or str(data)
 
 
