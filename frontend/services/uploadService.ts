@@ -2,6 +2,7 @@ export interface UploadResult {
   file_id: string;
   filename: string;
   message: string;
+  user_id?: string;
 }
 
 export function uploadResume(
@@ -19,7 +20,12 @@ export function uploadResume(
 
     xhr.addEventListener('load', () => {
       if (xhr.status >= 200 && xhr.status < 300) {
-        resolve(JSON.parse(xhr.responseText) as UploadResult);
+        const result = JSON.parse(xhr.responseText) as UploadResult;
+        // Persist guest_id so the login/register flow can claim these uploads.
+        if (result.user_id?.startsWith('guest_') && typeof window !== 'undefined') {
+          localStorage.setItem('guest_id', result.user_id);
+        }
+        resolve(result);
       } else {
         try {
           const body = JSON.parse(xhr.responseText);
@@ -35,6 +41,19 @@ export function uploadResume(
     );
 
     xhr.open('POST', '/api/upload-resume');
+
+    // If authenticated, attribute the upload to the user's account via X-User-Id.
+    // The upload endpoint is open so no JWT verification is required here.
+    if (typeof window !== 'undefined') {
+      const storedUser = localStorage.getItem('auth_user');
+      if (storedUser) {
+        try {
+          const { id } = JSON.parse(storedUser) as { id: string };
+          if (id) xhr.setRequestHeader('X-User-Id', id);
+        } catch { /* ignore parse errors */ }
+      }
+    }
+
     xhr.send(form);
   });
 }
