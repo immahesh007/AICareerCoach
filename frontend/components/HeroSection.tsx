@@ -1,11 +1,19 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import UploadArea from './UploadArea';
-import UnlockMatchReport from './UnlockMatchReport';
+import AnalyzeMoreModal from '@/components/dashboard/AnalyzeMoreModal';
 
 export default function HeroSection() {
+  const router = useRouter();
   const [uploadedFileId, setUploadedFileId] = useState<string | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+
+  const handleSuccess = () => {
+    setModalOpen(false);
+    router.push('/ats-dashboard');
+  };
 
   return (
     <section className="relative min-h-screen bg-gradient-to-br from-indigo-950 via-[#1e1060] to-indigo-900 flex flex-col items-center justify-center overflow-hidden pt-24 pb-20">
@@ -33,13 +41,23 @@ export default function HeroSection() {
           Upload your resume and let our AI coach analyze it, match you with ideal positions, and deliver personalized feedback to make you stand out.
         </p>
 
-        {/* Two-column: resume upload left, job description + CTA right */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
+        {/* Upload area — centered, wider */}
+        <div className="max-w-xl mx-auto">
           <UploadArea
             onSuccess={(fileId) => setUploadedFileId(fileId)}
             onReset={() => setUploadedFileId(null)}
           />
-          <UnlockMatchReport fileId={uploadedFileId} />
+
+          {uploadedFileId && (
+            <div className="mt-6 flex justify-center">
+              <button
+                onClick={() => setModalOpen(true)}
+                className="px-8 py-3 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold transition-all duration-200 hover:scale-[1.02] cursor-pointer shadow-lg shadow-emerald-500/30"
+              >
+                Analyse with AI
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Trust indicators */}
@@ -54,6 +72,16 @@ export default function HeroSection() {
           ))}
         </div>
       </div>
+
+      {uploadedFileId && (
+        <AnalyzeMoreModal
+          isOpen={modalOpen}
+          resumeId={uploadedFileId}
+          resumeLabel="Current upload"
+          onClose={() => setModalOpen(false)}
+          onSuccess={handleSuccess}
+        />
+      )}
     </section>
   );
 }

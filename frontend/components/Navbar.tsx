@@ -34,6 +34,12 @@ export default function Navbar() {
 
           {isAuthenticated && user ? (
             <div className="flex items-center gap-3">
+              <Link
+                href="/dashboard"
+                className="px-4 py-2 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition-colors"
+              >
+                Dashboard
+              </Link>
               <div className="hidden sm:flex items-center gap-2">
                 <div className="w-8 h-8 rounded-full bg-emerald-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
                   {user.name.charAt(0).toUpperCase()}

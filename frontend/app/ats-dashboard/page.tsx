@@ -1,11 +1,26 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import type { ATSResult } from '@/services/ats';
+import { getAnalysis, type SingleAnalysisResponse } from '@/services/dashboardService';
 
 const ATS_STORAGE_KEY = 'ats_result';
+
+type DisplayResult = {
+  ats_score: number;
+  match_percentage: number | null;
+  matching_skills: string[];
+  experience_fit: string | null;
+  strengths: string[];
+  weaknesses: string[];
+  missing_keywords: string[];
+  formatting_feedback: string | null;
+  match_report: string | null;
+  jd_title?: string | null;
+  timestamp?: string | null;
+};
 
 function scoreColor(score: number) {
   if (score >= 70) return { ring: 'stroke-emerald-400', text: 'text-emerald-400', badge: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30', label: 'Strong Match' };
@@ -90,22 +105,78 @@ function BulletList({ items, variant }: { items: string[]; variant: 'positive' |
   );
 }
 
+function fromBackend(a: SingleAnalysisResponse): DisplayResult {
+  return {
+    ats_score: a.ats_score,
+    match_percentage: a.match_percentage,
+    matching_skills: a.matching_skills ?? [],
+    experience_fit: a.experience_fit,
+    strengths: a.strengths ?? [],
+    weaknesses: a.weaknesses ?? [],
+    missing_keywords: a.missing_keywords ?? [],
+    formatting_feedback: a.formatting_feedback,
+    match_report: a.match_report,
+    jd_title: a.jd_title,
+    timestamp: a.timestamp,
+  };
+}
+
+function fromSession(r: ATSResult): DisplayResult {
+  return {
+    ats_score: r.ats_score,
+    match_percentage: r.match_percentage,
+    matching_skills: r.matching_skills ?? [],
+    experience_fit: r.experience_fit,
+    strengths: r.strengths ?? [],
+    weaknesses: r.weaknesses ?? [],
+    missing_keywords: r.missing_keywords ?? [],
+    formatting_feedback: r.formatting_feedback,
+    match_report: r.match_report,
+  };
+}
+
 export default function ATSDashboardPage() {
   const router = useRouter();
-  const [result, setResult] = useState<ATSResult | null>(null);
+  const searchParams = useSearchParams();
+  const analysisId = searchParams.get('analysis_id');
+
+  const [result, setResult] = useState<DisplayResult | null>(null);
   const [ready, setReady] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const raw = sessionStorage.getItem(ATS_STORAGE_KEY);
-    if (raw) {
-      try {
-        setResult(JSON.parse(raw));
-      } catch {
-        // malformed data — fall through to empty state
+    let cancelled = false;
+
+    async function load() {
+      if (analysisId) {
+        try {
+          const a = await getAnalysis(analysisId);
+          if (!cancelled) setResult(fromBackend(a));
+        } catch (e) {
+          if (!cancelled) setError(e instanceof Error ? e.message : 'Failed to load analysis.');
+        } finally {
+          if (!cancelled) setReady(true);
+        }
+        return;
       }
+
+      // Fallback: post-upload flow stores the latest result in sessionStorage
+      const raw = sessionStorage.getItem(ATS_STORAGE_KEY);
+      if (raw) {
+        try {
+          setResult(fromSession(JSON.parse(raw) as ATSResult));
+        } catch {
+          // malformed — leave result null
+        }
+      }
+      setReady(true);
     }
-    setReady(true);
-  }, []);
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [analysisId]);
 
   if (!ready) {
     return (
@@ -118,7 +189,7 @@ export default function ATSDashboardPage() {
     );
   }
 
-  if (!result) {
+  if (error || !result) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-indigo-950 via-[#1e1060] to-indigo-900 flex flex-col">
         <Navbar />
@@ -129,14 +200,16 @@ export default function ATSDashboardPage() {
             </svg>
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-white mb-2">No Analysis Found</h1>
-            <p className="text-indigo-200 text-sm max-w-sm">Run an ATS analysis from the home page to see your results here.</p>
+            <h1 className="text-2xl font-bold text-white mb-2">{error ? 'Analysis unavailable' : 'No Analysis Found'}</h1>
+            <p className="text-indigo-200 text-sm max-w-sm">
+              {error || 'Run an ATS analysis from the home page or pick one from your dashboard.'}
+            </p>
           </div>
           <button
-            onClick={() => router.push('/')}
+            onClick={() => router.push('/dashboard')}
             className="px-6 py-2.5 rounded-full bg-gradient-to-r from-indigo-500 to-violet-500 text-white text-sm font-semibold hover:opacity-90 transition-opacity"
           >
-            Go to Home
+            Go to Dashboard
           </button>
         </div>
       </div>
@@ -147,7 +220,6 @@ export default function ATSDashboardPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-950 via-[#1e1060] to-indigo-900">
-      {/* Background orbs */}
       <div className="fixed -top-40 -right-40 w-[600px] h-[600px] rounded-full bg-violet-700/20 blur-[100px] pointer-events-none" />
       <div className="fixed -bottom-40 -left-40 w-[500px] h-[500px] rounded-full bg-indigo-600/20 blur-[100px] pointer-events-none" />
 
@@ -155,26 +227,21 @@ export default function ATSDashboardPage() {
 
       <main className="relative z-10 max-w-5xl mx-auto px-6 pt-32 pb-20">
 
-        {/* Hero score section */}
         <div className="flex flex-col items-center text-center mb-14 animate-fade-in-up">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 text-indigo-200 text-sm font-medium mb-8">
             <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse" />
-            ATS Analysis Complete
+            ATS Analysis
+            {result.jd_title && <span className="text-white/60">· {result.jd_title}</span>}
           </div>
 
           <ScoreRing score={result.ats_score} />
 
-          {/* <h1 className={`text-6xl md:text-7xl font-black mt-6 tabular-nums ${colors.text}`}>
-            {result.ats_score}
-            <span className="text-3xl font-bold text-white/40">%</span>
-          </h1> */}
           <p className="text-white/60 text-lg mt-1">ATS Compatibility Score</p>
 
           <span className={`mt-4 px-4 py-1.5 rounded-full text-sm font-semibold border ${colors.badge}`}>
             {colors.label}
           </span>
 
-          {/* Match percentage bar */}
           <div className="mt-5 w-full max-w-xs flex flex-col items-center gap-2">
             <div className="flex justify-between w-full text-xs text-white/50 font-medium">
               <span>JD Match</span>
@@ -189,20 +256,18 @@ export default function ATSDashboardPage() {
           </div>
 
           <button
-            onClick={() => router.push('/')}
+            onClick={() => router.push('/dashboard')}
             className="mt-8 px-6 py-2.5 rounded-full bg-white/10 border border-white/20 text-indigo-200 text-sm font-medium hover:bg-white/15 transition-colors inline-flex items-center gap-2"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
-            Analyze Another Resume
+            Back to Dashboard
           </button>
         </div>
 
-        {/* Dashboard grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
 
-          {/* Match Report — full width */}
           <SectionCard
             fullWidth
             title="Match Report"
@@ -212,12 +277,11 @@ export default function ATSDashboardPage() {
               </svg>
             }
           >
-            <p className="text-indigo-100 text-sm leading-relaxed">
+            <p className="text-indigo-100 text-sm leading-relaxed whitespace-pre-wrap">
               {result.match_report || 'No match report available.'}
             </p>
           </SectionCard>
 
-          {/* Strengths */}
           <SectionCard
             title="Strengths"
             icon={
@@ -229,7 +293,6 @@ export default function ATSDashboardPage() {
             <BulletList items={result.strengths} variant="positive" />
           </SectionCard>
 
-          {/* Weaknesses */}
           <SectionCard
             title="Weaknesses"
             icon={
@@ -241,7 +304,6 @@ export default function ATSDashboardPage() {
             <BulletList items={result.weaknesses} variant="negative" />
           </SectionCard>
 
-          {/* Matching Skills */}
           <SectionCard
             title="Matching Skills"
             icon={
@@ -256,7 +318,6 @@ export default function ATSDashboardPage() {
             />
           </SectionCard>
 
-          {/* Experience Fit */}
           <SectionCard
             title="Experience Fit"
             icon={
@@ -265,12 +326,11 @@ export default function ATSDashboardPage() {
               </svg>
             }
           >
-            <p className="text-indigo-100 text-sm leading-relaxed">
+            <p className="text-indigo-100 text-sm leading-relaxed whitespace-pre-wrap">
               {result.experience_fit || 'No experience assessment available.'}
             </p>
           </SectionCard>
 
-          {/* Missing Keywords — full width */}
           <SectionCard
             fullWidth
             title="Missing Keywords"
@@ -286,7 +346,6 @@ export default function ATSDashboardPage() {
             />
           </SectionCard>
 
-          {/* Formatting Feedback — full width */}
           <SectionCard
             fullWidth
             title="Formatting Feedback"
@@ -296,7 +355,7 @@ export default function ATSDashboardPage() {
               </svg>
             }
           >
-            <p className="text-indigo-100 text-sm leading-relaxed">
+            <p className="text-indigo-100 text-sm leading-relaxed whitespace-pre-wrap">
               {result.formatting_feedback || 'No formatting feedback available.'}
             </p>
           </SectionCard>

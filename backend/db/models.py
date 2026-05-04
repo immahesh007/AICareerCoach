@@ -27,6 +27,7 @@ class ResumeMetadata(Base):
     )
     uploaded_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
     size = Column(Float, nullable=True)
+    original_filename = Column(Text, nullable=True)
 
     __table_args__ = (Index("ix_resume_metadata_user_id", "user_id"),)
 
@@ -71,6 +72,8 @@ class ATSEvaluation(Base):
     missing_keywords = Column(JSONB, nullable=False, default=list)
     formatting_feedback = Column(Text, nullable=True)
     match_report = Column(Text, nullable=True)
+    jd_text = Column(Text, nullable=True)
+    jd_title = Column(Text, nullable=True)
 
     __table_args__ = (Index("ix_ats_evaluations_resume_id", "resume_id"),)
 

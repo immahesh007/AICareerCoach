@@ -3,6 +3,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, File, Header, HTTPException, Query, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.auth_dep import get_optional_user_id
 from db.connection import get_db
 from services.file_service import save_upload
 
@@ -18,8 +19,9 @@ ALLOWED_EXTENSIONS = {".pdf", ".docx"}
 @router.post("/upload-resume")
 async def upload_resume(
     file: UploadFile = File(...),
-    user_id: Optional[str] = Query(default=None, description="Optional user ID"),
-    x_user_id: Optional[str] = Header(default=None, description="Optional user ID via X-User-Id header"),
+    user_id: Optional[str] = Query(default=None, description="Optional user ID (guest fallback)"),
+    x_user_id: Optional[str] = Header(default=None, description="Guest user ID; ignored when JWT is present"),
+    jwt_user_id: Optional[str] = Depends(get_optional_user_id),
     db: AsyncSession = Depends(get_db),
 ):
     ext = "." + (file.filename or "").rsplit(".", 1)[-1].lower()
@@ -29,5 +31,6 @@ async def upload_resume(
             detail="Invalid file type. Only PDF and DOCX files are accepted.",
         )
 
-    # Header takes precedence over query param; both are optional
-    return await save_upload(file, db=db, user_id=x_user_id or user_id)
+    # Trusted JWT identity wins; X-User-Id / ?user_id are guest-only fallbacks.
+    resolved_user_id = jwt_user_id or x_user_id or user_id
+    return await save_upload(file, db=db, user_id=resolved_user_id)

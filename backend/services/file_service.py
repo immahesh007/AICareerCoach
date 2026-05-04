@@ -38,6 +38,7 @@ async def save_upload(
         db,
         user_id=resolved_user_id,
         size=float(len(content)),
+        original_filename=file.filename,
     )
     file_id: uuid.UUID = record.id
     s3_key = f"resumes/{resolved_user_id}/{file_id}{ext}"
