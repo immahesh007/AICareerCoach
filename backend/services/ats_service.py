@@ -66,7 +66,29 @@ async def _encode(texts: list[str]) -> np.ndarray:
     )
 
 
-async def compute_ats_score(db, *, resume_id, parsed_jd: dict) -> dict:
+def _coerce_text(value) -> str:
+    """LLM occasionally returns a dict/list for fields the prompt asks for as a string
+    (e.g. formatting_feedback bucketed by check name). Flatten to a readable string so
+    TEXT columns accept it."""
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value
+    if isinstance(value, dict):
+        return "\n".join(f"{k}: {_coerce_text(v)}" for k, v in value.items())
+    if isinstance(value, (list, tuple)):
+        return "\n".join(_coerce_text(item) for item in value)
+    return str(value)
+
+
+async def compute_ats_score(
+    db,
+    *,
+    resume_id,
+    parsed_jd: dict,
+    jd_text: str | None = None,
+    jd_title: str | None = None,
+) -> dict:
     parsed = await get_parsed_by_resume_id(db, resume_id)
     if parsed is None:
         raise ValueError(f"No parsed resume found for resume_id={resume_id}")
@@ -88,19 +110,30 @@ async def compute_ats_score(db, *, resume_id, parsed_jd: dict) -> dict:
         semantic_score=semantic_score,
     )
 
-    # Persist to ats_evaluations
-    await insert_evaluation(
+    # Normalize free-text fields — LLM may return dict/list for prompt-string fields.
+    experience_fit = _coerce_text(evaluation.get("experience_fit", ""))
+    formatting_feedback = _coerce_text(evaluation.get("formatting_feedback", ""))
+    match_report = _coerce_text(evaluation.get("match_report", ""))
+
+    record = await insert_evaluation(
         db,
         resume_id=resume_id,
         ats_score=evaluation.get("ats_score", round(semantic_score * 100)),
         match_percentage=evaluation.get("match_percentage", round(semantic_score * 100)),
         matching_skills=evaluation.get("matching_skills", []),
-        experience_fit=evaluation.get("experience_fit", ""),
+        experience_fit=experience_fit,
         strengths=evaluation.get("strengths", []),
         weaknesses=evaluation.get("weaknesses", []),
         missing_keywords=evaluation.get("missing_keywords", []),
-        formatting_feedback=evaluation.get("formatting_feedback", ""),
-        match_report=evaluation.get("match_report", ""),
+        formatting_feedback=formatting_feedback,
+        match_report=match_report,
+        jd_text=jd_text,
+        jd_title=jd_title,
     )
 
+    # Reflect normalized values in the response so the dashboard renders a string.
+    evaluation["experience_fit"] = experience_fit
+    evaluation["formatting_feedback"] = formatting_feedback
+    evaluation["match_report"] = match_report
+    evaluation["evaluation_id"] = str(record.id)
     return evaluation

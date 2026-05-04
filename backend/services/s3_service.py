@@ -23,3 +23,12 @@ async def upload_file(content: bytes, key: str, content_type: str) -> str:
         )
     logger.info("Uploaded %d bytes to s3://%s/%s", len(content), settings.S3_BUCKET_NAME, key)
     return key
+
+
+async def get_presigned_url(key: str, expires_in: int = 900) -> str:
+    async with _session.client("s3") as s3:
+        return await s3.generate_presigned_url(
+            "get_object",
+            Params={"Bucket": settings.S3_BUCKET_NAME, "Key": key},
+            ExpiresIn=expires_in,
+        )

@@ -21,9 +21,15 @@ export async function analyzeATS(
     throw new Error('Job description must be between 1 and 5,000 characters.');
   }
 
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem('auth_token');
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+  }
+
   const res = await fetch('/api/know-ats', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify({ file_id: fileId, jobDescription }),
   });
 

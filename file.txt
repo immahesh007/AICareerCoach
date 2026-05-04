@@ -266,3 +266,150 @@ Please generate the code to add three new metrics to this entire stack: match_pe
 Task 1: LLM Prompt & Schema: Update the JSON output schema and the system prompt for the LLM API call to evaluate and return these three new fields.
 Task 2: Database Model: Write the SQL migration or ORM code to add these three new columns to the existing ats_evaluations table.
 Task 3: Frontend Component: Update the React/Next.js dashboard component to map and display these new fields within the existing UI layout, strictly adhering to the current design system and color schemes.
+
+
+# SOFTWARE REQUIREMENT SPECIFICATION: USER AUTH & DYNAMIC DOCUMENT ATTRIBUTION
+
+## 1. OBJECTIVE
+The goal is to develop a secure User Authentication and Audit system that integrates with the existing Resume Upload feature. This system must allow for "Guest-to-User" data migration, ensuring that any resume uploaded anonymously is automatically linked to a user's account once they log in or register.
+
+---
+
+## 2. DATABASE ARCHITECTURE (POSTGRESQL)
+
+### 2.1 Table: users (New)
+Stores core user credentials and profile information.
+- id: UUID (Primary Key, Default: gen_random_uuid())
+- name: VARCHAR(255) (Full Name)
+- email: VARCHAR(255) (Unique, Indexed)
+- password_hash: TEXT (Hashed using Bcrypt)
+- created_at: TIMESTAMP (Default: CURRENT_TIMESTAMP)
+
+### 2.2 Table: login_history (New)
+Tracks user sessions for auditing and "Last Login" visibility.
+- id: SERIAL (Primary Key)
+- user_id: UUID (Foreign Key referencing users.id)
+- login_at: TIMESTAMP (Default: CURRENT_TIMESTAMP)
+- ip_address: VARCHAR(45) (Optional)
+
+### 2.3 Table: resume_metadata (Existing/Modified)
+Modified to support the "Ownership Handshake."
+- id: SERIAL (Primary Key)
+- user_id: VARCHAR(255) 
+    * MUST support both Guest IDs (e.g., 'guest_abc123') and Auth IDs (UUIDs).
+- file_path: TEXT
+- upload_date: TIMESTAMP
+
+---
+
+## 3. FUNCTIONAL REQUIREMENTS
+
+### 3.1 Unprotected Resume Upload
+- The `POST /upload-resume` API must remain open to all users.
+- If the request is UNAUTHENTICATED: Store the file with a generated `guest_id`.
+- If the request is AUTHENTICATED: Store the file with the user’s `UUID`.
+
+### 3.2 Registration (Minimalist)
+- Frontend captures: **Name**, **Email**, **Password**.
+- Backend: Hashes password, checks for duplicate emails, and creates the record.
+
+### 3.3 Login & Ownership Handshake
+When a user authenticates, the system must perform three simultaneous actions:
+1.  **Validate:** Verify credentials against the `users` table.
+2.  **Audit:** Insert a new row into `login_history`.
+3.  **Claim Data:** If the frontend provides a `guest_id` (from browser storage), the backend must execute:
+    UPDATE resume_metadata 
+    SET user_id = [Authenticated_UUID] 
+    WHERE user_id = [Provided_Guest_ID];
+
+---
+
+## 4. FRONTEND & UI SPECIFICATIONS
+
+### 4.1 Visual Theme
+To maintain project continuity, all components must use the established design system:
+- **Primary Actions:** Deep Jewel Tones (Emerald, Sapphire, or Ruby) for buttons and progress bars.
+- **Surface & Inputs:** Warm Earthy Tones (Ochre, Cream, or Sienna) for form cards, backgrounds, and input borders.
+
+### 4.2 Component Logic
+- **Storage:** The frontend must check `localStorage` for an existing `guest_id`.
+- **State Transfer:** During the Login/Register API call, the `guest_id` must be passed in the request body.
+- **Context:** Upon login, the "Guest" state is cleared, and the UI transitions to "Authenticated" mode.
+
+---
+
+## 5. API ENDPOINTS SUMMARY
+
+| Method | Endpoint | Protection | Description |
+| :--- | :--- | :--- | :--- |
+| POST | `/auth/register` | Open | Creates new user; captures minimal details. |
+| POST | `/auth/login` | Open | Authenticates user; updates `login_history` and `resume_metadata`. |
+| POST | `/upload-resume` | Open | Saves resume; assigns `guest_id` or `user_id`. |
+
+---
+
+## 6. SECURITY STANDARDS
+- **Encryption:** Use Bcrypt with a salt factor of 12 for password hashing.
+- **Integrity:** The Handshake update must only occur inside a verified database transaction.
+- **Sanitization:** All inputs (Email/Name) must be sanitized to prevent SQL Injection and XSS.
+
+
+# SOFTWARE REQUIREMENT SPECIFICATION: USER RESUME DASHBOARD & ATS ANALYSIS
+
+## 1. OBJECTIVE
+To develop a centralized User Dashboard for managing uploaded resumes and their corresponding ATS (Applicant Tracking System) analysis results. The system will support multi-JD (Job Description) analysis for a single resume, featuring a nested view for historical data and a paginated, high-performance interface.
+
+---
+
+## 2. DASHBOARD VIEW (MAIN TABLE)
+
+### 2.1 Resume Listing & Pagination
+- **Interface:** A paginated table displaying all resumes associated with the `user_id`.
+- **Columns:**
+    - **Resume Name:** The filename or display name of the uploaded document.
+    - **ATS Score:** The primary/latest compatibility score.
+    - **Actions:** 
+        - **View Resume:** A button to view the resume in pdf/docx format.
+        - **View Results:** A primary button redirecting to the `/ats-dashboard` page.
+        - **Analyze More:** A "More" button to trigger a new analysis against a different JD for the same resume.
+
+---
+
+## 3. ATS ANALYSIS DASHBOARD (/ats-dashboard)
+
+### 3.1 Historical Analysis View
+- **Multi-Analysis Management:** All previous analysis runs for the selected resume must be displayed on this single page.
+- **Accordion Display:** Use a **Collapse/Expand** feature to organize different analysis results. Each section header should clearly state the JD title/Date of analysis.
+- **Detailed Metrics:** When expanded, show the full breakdown of the ATS score and feedback.
+
+### 3.2 JD Reference Pop-up
+- **Trigger:** A "View JD" button within each analysis section.
+- **Component:** A modal/pop-up window displaying the full Job Description text used for that specific analysis.
+- **Formatting:** The text must be contained within a **scrollable box** to handle long descriptions without breaking the UI layout.
+
+---
+
+## 4. VISUAL & UI STANDARDS
+
+### 4.1 Aesthetic Integration
+- **Color Palette:**
+    - **Primary Buttons (View, Analyze):** Jewel tones (Deep Sapphire or Emerald).
+    - **Containers & Accordions:** Warm earthy tones (Cream or muted Sienna) for a clean, retro-professional feel.
+- **Responsiveness:** The table and pop-ups must be fully responsive, ensuring readability on both desktop and mobile devices.
+
+---
+
+## 5. FUNCTIONAL LOGIC & DATA HANDLING
+
+| Feature | Action |
+| :--- | :--- |
+| **New Analysis** | Triggered from the main table; allows user to input a new JD string to compare against an existing `resume_id`. |
+| **Pagination** | Server-side pagination to ensure the dashboard remains performant as the number of resumes grows. |
+| **State Management** | Each analysis record must remain linked to its specific JD text for the "View JD" pop-up. |
+
+---
+
+## 6. NAVIGATION FLOW
+1. **User Dashboard** (Main Table) -> Click "View Results" -> **ATS Dashboard** (/ats-dashboard).
+2. **ATS Dashboard** -> Click "View JD" -> **Modal** (Scrollable JD text).
+3. **User Dashboard** -> Click "More" -> **Analysis Setup** -> Refresh Dashboard.
