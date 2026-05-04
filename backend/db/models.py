@@ -1,7 +1,7 @@
 import uuid
 from enum import Enum as PyEnum
 
-from sqlalchemy import Column, Enum, Float, ForeignKey, Index, Integer, Text, TIMESTAMP
+from sqlalchemy import Column, Enum, Float, ForeignKey, Index, Integer, String, Text, TIMESTAMP
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.sql import func
@@ -73,3 +73,30 @@ class ATSEvaluation(Base):
     match_report = Column(Text, nullable=True)
 
     __table_args__ = (Index("ix_ats_evaluations_resume_id", "resume_id"),)
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String(255), nullable=False)
+    email = Column(String(255), nullable=False, unique=True)
+    password_hash = Column(Text, nullable=False)
+    created_at = Column(TIMESTAMP, server_default=func.now(), nullable=False)
+
+    __table_args__ = (Index("ix_users_email", "email"),)
+
+
+class LoginHistory(Base):
+    __tablename__ = "login_history"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    login_at = Column(TIMESTAMP, server_default=func.now(), nullable=False)
+    ip_address = Column(String(45), nullable=True)
+
+    __table_args__ = (Index("ix_login_history_user_id", "user_id"),)

@@ -16,3 +16,9 @@ backend/uploads/*
 
 # OS
 .DS_Store
+
+graphify-out/
+
+product_plan_mvp_user_flow_ai_architecture.md
+project_context.txt
+file.txt
