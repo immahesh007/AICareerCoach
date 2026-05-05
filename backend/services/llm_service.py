@@ -7,7 +7,7 @@ from core.config import settings
 
 logger = logging.getLogger(__name__)
 
-_client = AsyncClient(host=settings.OLLAMA_BASE_URL)
+_client = AsyncClient(host=settings.OLLAMA_BASE_URL, timeout=120)
 
 MAX_TEXT_CHARS = 50_000
 

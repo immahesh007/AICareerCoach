@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import type { ATSResult } from '@/services/ats';
@@ -135,7 +135,7 @@ function fromSession(r: ATSResult): DisplayResult {
   };
 }
 
-export default function ATSDashboardPage() {
+function ATSDashboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const analysisId = searchParams.get('analysis_id');
@@ -363,5 +363,20 @@ export default function ATSDashboardPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function ATSDashboardPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-indigo-950 via-[#1e1060] to-indigo-900 flex items-center justify-center">
+        <svg className="w-10 h-10 text-indigo-300 animate-spin" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+        </svg>
+      </div>
+    }>
+      <ATSDashboardContent />
+    </Suspense>
   );
 }

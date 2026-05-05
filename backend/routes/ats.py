@@ -1,3 +1,4 @@
+import logging
 import uuid
 from typing import Optional
 
@@ -11,6 +12,8 @@ from db.repositories.parsed_resume_repo import update_parsed_jd
 from db.repositories.resume_repo import get_resume
 from services.ats_service import compute_ats_score
 from services.llm_service import extract_jd_data
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -37,17 +40,27 @@ async def know_ats(
         # 404 (not 403) — don't leak existence of other users' resumes
         raise HTTPException(status_code=404, detail="Resume not found.")
 
-    parsed_jd = await extract_jd_data(request.jobDescription)
+    try:
+        parsed_jd = await extract_jd_data(request.jobDescription)
+    except Exception as exc:
+        logger.exception("Ollama JD extraction failed")
+        raise HTTPException(status_code=503, detail="AI service unavailable — is Ollama running?") from exc
 
     await update_parsed_jd(db, resume_id=resume_uuid, parsed_jd=parsed_jd)
 
-    evaluation = await compute_ats_score(
-        db,
-        resume_id=resume_uuid,
-        parsed_jd=parsed_jd,
-        jd_text=request.jobDescription,
-        jd_title=request.jd_title,
-    )
+    try:
+        evaluation = await compute_ats_score(
+            db,
+            resume_id=resume_uuid,
+            parsed_jd=parsed_jd,
+            jd_text=request.jobDescription,
+            jd_title=request.jd_title,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.exception("ATS scoring failed")
+        raise HTTPException(status_code=503, detail="AI service unavailable — is Ollama running?") from exc
 
     return {
         "file_id": request.file_id,
