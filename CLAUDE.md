@@ -86,3 +86,7 @@ Settings are loaded by `core/config.py` via `pydantic-settings`. The `.env` file
 
 ## Planned Tech Stack (not yet implemented)
 Per README: OpenAI/Claude/Llama for LLM layer, Sentence Transformers + BGE embeddings for job matching, PyMuPDF + python-docx for parsing, Redis for caching.
+
+
+Graphify
+graphify update ./src
