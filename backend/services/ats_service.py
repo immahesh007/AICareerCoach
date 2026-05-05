@@ -11,7 +11,7 @@ from services.llm_service import evaluate_ats_match
 
 logger = logging.getLogger(__name__)
 
-_MODEL_NAME = "all-MiniLM-L6-v2"
+_MODEL_NAME = "BAAI/bge-m3"
 
 
 @lru_cache(maxsize=1)
