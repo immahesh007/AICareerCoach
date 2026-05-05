@@ -11,13 +11,12 @@ from services.llm_service import evaluate_ats_match
 
 logger = logging.getLogger(__name__)
 
-_MODEL_NAME = "BAAI/bge-m3"
+_MODEL_NAME = "all-MiniLM-L6-v2"
 
 
 @lru_cache(maxsize=1)
 def _get_model() -> SentenceTransformer:
-    # ~2.3 GB download on first call; cached to ~/.cache/huggingface/ thereafter.
-    logger.info("Loading BGE-M3 embedding model (first use — may take a moment)…")
+    logger.info("Loading %s embedding model (first use)…", _MODEL_NAME)
     return SentenceTransformer(_MODEL_NAME)
 
 
