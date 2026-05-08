@@ -171,6 +171,12 @@ export default function AnalysisHistoryPage() {
                           View JD
                         </button>
                         <button
+                          onClick={() => router.push(`/resumes/${a.resume_id}/analyses/${a.id}/suggestions`)}
+                          className="px-3 py-1.5 rounded-full bg-amber-500 hover:bg-amber-400 text-indigo-950 text-xs font-semibold transition-colors"
+                        >
+                          Improve with AI
+                        </button>
+                        <button
                           onClick={() => router.push(`/resume-builder?resume_id=${a.resume_id}`)}
                           className="px-3 py-1.5 rounded-full bg-violet-600 hover:bg-violet-500 text-white text-xs font-semibold transition-colors"
                         >
@@ -208,6 +214,12 @@ export default function AnalysisHistoryPage() {
                       className="px-3 py-1.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold"
                     >
                       View JD
+                    </button>
+                    <button
+                      onClick={() => router.push(`/resumes/${a.resume_id}/analyses/${a.id}/suggestions`)}
+                      className="px-3 py-1.5 rounded-full bg-amber-500 hover:bg-amber-400 text-indigo-950 text-xs font-semibold"
+                    >
+                      Improve with AI
                     </button>
                     <button
                       onClick={() => router.push(`/resume-builder?resume_id=${a.resume_id}`)}

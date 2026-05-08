@@ -38,6 +38,7 @@ interface ParsedResumeData {
   email?: string;
   phone?: string;
   linkedin?: string;
+  summary?: string;
   skills?: string[];
   experience?: ParsedExperience[];
   education?: ParsedEducation[];
@@ -173,6 +174,7 @@ export function parsedToBuilder(parsed: Record<string, unknown>): ResumeData {
   const p = (parsed ?? {}) as ParsedResumeData;
   return {
     basics: mapBasics(p),
+    summary: (p.summary ?? '').trim(),
     education: mapEducation(p),
     skillCategories: mapSkills(p),
     experience: mapExperience(p),

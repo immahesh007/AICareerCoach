@@ -110,6 +110,64 @@ export async function reparseResume(resumeId: string): Promise<ParsedResumeRespo
   return parseOrThrow<ParsedResumeResponse>(res, 'Failed to re-parse resume.');
 }
 
+export interface SummarySuggestion {
+  suggestion_id: string;
+  current: string | null;
+  suggested: string;
+  rationale: string;
+}
+
+export interface SkillSuggestion {
+  suggestion_id: string;
+  skill: string;
+  rationale: string;
+}
+
+export interface ExperienceSuggestion {
+  suggestion_id: string;
+  experience_index: number;
+  bullet_index: number;
+  current: string;
+  suggested: string;
+  rationale: string;
+}
+
+export interface SuggestModificationsResponse {
+  suggestion_id: string;
+  evaluation_id: string;
+  resume_id: string;
+  suggestions: {
+    summary: SummarySuggestion | null;
+    skills: SkillSuggestion[];
+    experience: ExperienceSuggestion[];
+  };
+  model: string;
+  generated_at: string;
+}
+
+export async function suggestModifications(
+  evaluationId: string,
+): Promise<SuggestModificationsResponse> {
+  const res = await fetch('/api/suggest-modifications', {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ evaluation_id: evaluationId }),
+  });
+  return parseOrThrow<SuggestModificationsResponse>(res, 'Could not generate suggestions.');
+}
+
+export async function recordSuggestionDecisions(
+  suggestionId: string,
+  decisions: Record<string, boolean>,
+): Promise<{ suggestion_id: string; recorded: number }> {
+  const res = await fetch(`/api/suggest-modifications/${suggestionId}/decisions`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ decisions }),
+  });
+  return parseOrThrow(res, 'Could not record decisions.');
+}
+
 export async function triggerNewAnalysis(
   fileId: string,
   jobDescription: string,

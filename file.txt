@@ -420,3 +420,12 @@ To develop a centralized User Dashboard for managing uploaded resumes and their 
 Now I want to wire up resume-builder page with the analysis history page of the dashboard.
 Each analysis row should get a button named modify resume or something similar which is rendering to resume-builder page.
 When the user clicks the button on the analysis row, the resume builder page should open with prefilled inputs needed to make resume from the current resume for which analysis was made on.
+
+
+New Requirement on BE.
+The analysis report generated from the analyse resume should be recommended in the modify resume.
+It should only be recommended in Skills summary, modification in experience to fit in the JD and also recommend a summary.
+The overall goal of this task is to improve resume ATS score and align the resume to the JD against the analysis was made.
+Provide option to approve or reject the suggestions provided.
+Recommend me best LLM presnet to perform this task, This feature should provide value to candidate analysing their resume against the JD.
+First provide me plan, Do not start coding right away.

@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     S3_BUCKET_NAME: str
     OLLAMA_BASE_URL: str = "http://localhost:11434"
     OLLAMA_MODEL: str = "llama3.2"
+    # Stronger model used only for resume-modification suggestions (rewriting
+    # bullets, tailoring summary). Falls back to OLLAMA_MODEL when empty.
+    SUGGESTION_LLM_MODEL: str = "ministral-3:3b"
     JWT_SECRET_KEY: str = "change-me-in-production"
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRE_MINUTES: int = 1440  # 24 hours
