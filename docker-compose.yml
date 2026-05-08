@@ -23,6 +23,7 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:password@db:5432/aicareercoach
       OLLAMA_BASE_URL: http://host.docker.internal:11434
+      RESUME_BUILDER_SERVICE_URL: http://resume-builder-service:8080
     volumes:
       - hf_cache:/root/.cache/huggingface
     depends_on:
@@ -32,6 +33,13 @@ services:
       resources:
         limits:
           memory: 5g
+
+  resume-builder-service:
+    build:
+      context: ./resume-builder-service
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
 
   frontend:
     build:

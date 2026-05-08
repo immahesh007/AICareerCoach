@@ -11,31 +11,49 @@ router = APIRouter()
 
 class BasicsModel(BaseModel):
     name: str = ""
+    address: str = ""
     email: str = ""
     phone: str = ""
+    website: str = ""
+    github: str = ""
     linkedin: str = ""
-    summary: str = ""
-
-
-class ExperienceItem(BaseModel):
-    title: str = ""
-    company: str = ""
-    duration: str = ""
-    description: str = ""
 
 
 class EducationItem(BaseModel):
-    year: str = ""
-    degree: str = ""
     institution: str = ""
+    location: str = ""
+    degree: str = ""
+    gpa: str = ""
+    years: str = ""
+    coursework: str = ""
+    activities: str = ""
+
+
+class ExperienceItem(BaseModel):
+    company: str = ""
+    location: str = ""
+    title: str = ""
+    duration: str = ""
+    bullets: list[str] = []
+
+
+class SkillLevel(BaseModel):
+    emoji: str = ""
+    level: str = ""
+    items: str = ""
+
+
+class Award(BaseModel):
+    name: str = ""
+    date: str = ""
 
 
 class ResumeGenerateRequest(BaseModel):
-    basics: BasicsModel
-    skills: list[str] = []
-    experience: list[ExperienceItem] = []
+    basics: BasicsModel = BasicsModel()
     education: list[EducationItem] = []
-    certifications: list[str] = []
+    experience: list[ExperienceItem] = []
+    skills: list[SkillLevel] = []
+    awards: list[Award] = []
 
 
 @router.post("/resume-builder/generate")

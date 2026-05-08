@@ -1,0 +1,135 @@
+\documentclass[11pt,letterpaper]{article}
+
+%% ─── Page geometry ──────────────────────────────────────────────────────────
+\usepackage[top=0.65in, bottom=0.65in, left=0.75in, right=0.75in]{geometry}
+
+%% ─── XeLaTeX Unicode + emoji font (macOS → Apple Color Emoji, Linux/Docker → Noto) ──
+\usepackage{fontspec}
+\setmainfont{TeX Gyre Heros}
+\IfFontExistsTF{Apple Color Emoji}{%
+  \newfontfamily\emojifont{Apple Color Emoji}%
+  \newcommand{\ei}[1]{{\emojifont #1}}%
+}{%
+  \IfFontExistsTF{Noto Color Emoji}{%
+    \newfontfamily\emojifont{Noto Color Emoji}[Renderer=HarfBuzz]%
+    \newcommand{\ei}[1]{{\emojifont #1}}%
+  }{%
+    \newcommand{\ei}[1]{#1}% graceful fallback: no colour emoji
+  }%
+}
+
+%% ─── Typography + layout packages ───────────────────────────────────────────
+\usepackage{microtype}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\hypersetup{hidelinks, colorlinks=false}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0pt}
+
+%% ─── Section header command ─────────────────────────────────────────────────
+%%     \ressection{emoji}{Title}
+%%     Matches the template: bold large text + immediate thin rule below
+\newcommand{\ressection}[2]{%
+  \vspace{7pt}%
+  \noindent{\large\bfseries \ei{#1}~#2}%
+  \par\nobreak\vspace{-5pt}%
+  \noindent\rule{\linewidth}{0.5pt}%
+  \par\nobreak\vspace{3pt}%
+}
+
+%% ─── Entry header (left bold + right text, same line) ───────────────────────
+%%     \entryrow{Left bold text}{Right text}
+\newcommand{\entryrow}[2]{%
+  \noindent\textbf{#1}\hfill #2%
+}
+
+%% ─── Entry sub-row (left italic + right text, same line) ────────────────────
+\newcommand{\subrow}[2]{%
+  \noindent\textit{#1}\hfill #2%
+}
+
+\begin{document}
+\pagestyle{empty}
+
+%% ═══════════════════════════════════════════════════════════════════════════
+%%  HEADER
+%% ═══════════════════════════════════════════════════════════════════════════
+\begin{center}
+  {\LARGE\bfseries << basics.name | e >>}\\[4pt]
+  {\small \ei{🏠}~<< basics.address | e >>}\\[2pt]
+  {\small
+    \ei{📬}~\href{mailto:<< basics.email >>}{<< basics.email | e >>}%
+    \enspace\ei{☎️}~<< basics.phone | e >>%
+    \enspace\ei{🖥️}~\href{<< basics.website >>}{<< basics.website | e >>}%
+    \enspace\ei{🔗}~GitHub:~<< basics.github | e >>%
+    \enspace\ei{🔗}~LinkedIn:~<< basics.linkedin | e >>%
+  }
+\end{center}
+\vspace{3pt}
+
+%% ═══════════════════════════════════════════════════════════════════════════
+%%  EDUCATION
+%% ═══════════════════════════════════════════════════════════════════════════
+\ressection{📚}{Education}
+<% for edu in education %>
+\entryrow{<< edu.institution | e >>}{<< edu.location | e >>}\\[-3pt]
+\noindent\textit{<< edu.degree | e >>}<% if edu.gpa %> << edu.gpa | e >><% endif %>\hfill << edu.years | e >>\\[2pt]
+<% if edu.coursework %>
+\noindent\textbf{Coursework:} << edu.coursework | e >>\\[-1pt]
+<% endif %>
+<% if edu.activities %>
+\noindent\textbf{Activities:} << edu.activities | e >>%
+<% endif %>
+<% if not loop.last %>
+\par\vspace{4pt}
+<% endif %>
+<% endfor %>
+
+%% ═══════════════════════════════════════════════════════════════════════════
+%%  EXPERIENCE
+%% ═══════════════════════════════════════════════════════════════════════════
+\ressection{💼}{Experience}
+<% for exp in experience %>
+\entryrow{<< exp.company | e >>}{<< exp.location | e >>}\\[-4pt]
+\subrow{<< exp.title | e >>}{<< exp.duration | e >>}
+\begin{itemize}[
+  itemsep = 0pt,
+  parsep  = 0pt,
+  topsep  = 1pt,
+  partopsep = 0pt,
+  leftmargin = 1.4em,
+  label = {--}
+]
+<% for bullet in exp.bullets %>
+  \item << bullet | e >>
+<% endfor %>
+\end{itemize}
+<% endfor %>
+
+%% ═══════════════════════════════════════════════════════════════════════════
+%%  SKILLS
+%% ═══════════════════════════════════════════════════════════════════════════
+\ressection{🖐️}{Skills}
+\begin{itemize}[
+  itemsep = 1pt,
+  parsep  = 0pt,
+  topsep  = 0pt,
+  partopsep = 0pt,
+  leftmargin = 0pt,
+  label = {}
+]
+<% for skill in skills %>
+  \item \ei{<< skill.emoji >>}~\textbf{<< skill.level | e >>:} << skill['items'] | e >>
+<% endfor %>
+\end{itemize}
+
+%% ═══════════════════════════════════════════════════════════════════════════
+%%  AWARDS
+%% ═══════════════════════════════════════════════════════════════════════════
+\ressection{🏆}{Awards}
+<% for award in awards %>
+\noindent << award.name | e >>\hfill << award.date | e >>\\
+<% endfor %>
+
+\end{document}
