@@ -8,6 +8,7 @@ from routes.ats import router as ats_router
 from routes.auth import router as auth_router
 from routes.dashboard import analyses_router, router as dashboard_router
 from routes.resume import router as resume_router
+from routes.resume_builder import router as resume_builder_router
 
 
 @asynccontextmanager
@@ -31,6 +32,7 @@ app.include_router(ats_router, prefix="/api")
 app.include_router(auth_router, prefix="/api")
 app.include_router(dashboard_router, prefix="/api")
 app.include_router(analyses_router, prefix="/api")
+app.include_router(resume_builder_router, prefix="/api")
 
 
 @app.get("/health")
