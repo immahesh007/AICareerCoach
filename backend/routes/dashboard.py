@@ -1,3 +1,4 @@
+import logging
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -6,8 +7,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.auth_dep import get_current_user_id
 from db.connection import get_db
 from db.repositories.ats_repo import get_evaluation, list_evaluations_by_resume
+from db.repositories.parsed_resume_repo import get_parsed_by_resume_id, upsert_parsed_data
 from db.repositories.resume_repo import get_resume, list_resumes_with_latest_score
-from services.s3_service import get_presigned_url
+from services.extraction_service import extract_text
+from services.llm_service import extract_resume_data
+from services.s3_service import download_file, get_presigned_url
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/resumes", tags=["dashboard"])
 
@@ -106,6 +112,61 @@ async def get_resume_download_url(
         raise HTTPException(status_code=409, detail="Resume file is not available.")
     url = await get_presigned_url(resume.s3_key, expires_in=PRESIGNED_URL_TTL)
     return {"url": url, "expires_in": PRESIGNED_URL_TTL}
+
+
+@router.get("/{resume_id}/parsed")
+async def get_parsed_resume(
+    resume_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user_id: str = Depends(get_current_user_id),
+):
+    resume = await _load_owned_resume(db, resume_id, current_user_id)
+    parsed = await get_parsed_by_resume_id(db, resume_id=resume.id)
+    if parsed is None:
+        # Parsing is best-effort during upload; row may be absent if Ollama was down.
+        raise HTTPException(status_code=404, detail="Parsed resume not available.")
+    return {
+        "resume_id": str(resume.id),
+        "parsed_data": parsed.parsed_data or {},
+    }
+
+
+@router.post("/{resume_id}/reparse")
+async def reparse_resume(
+    resume_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user_id: str = Depends(get_current_user_id),
+):
+    resume = await _load_owned_resume(db, resume_id, current_user_id)
+    if not resume.s3_key:
+        raise HTTPException(status_code=409, detail="Original resume file is not available.")
+
+    try:
+        content = await download_file(resume.s3_key)
+    except Exception as exc:
+        logger.exception("S3 download failed during reparse for resume_id=%s", resume_id)
+        raise HTTPException(status_code=502, detail="Failed to fetch original file.") from exc
+
+    content_type = "application/pdf" if resume.s3_key.lower().endswith(".pdf") else "application/docx"
+
+    try:
+        raw_text = await extract_text(content, content_type)
+        parsed_data = await extract_resume_data(raw_text)
+    except Exception as exc:
+        logger.exception("Reparse pipeline failed for resume_id=%s", resume_id)
+        raise HTTPException(status_code=503, detail="AI service unavailable — is Ollama running?") from exc
+
+    await upsert_parsed_data(
+        db,
+        resume_id=resume.id,
+        user_id=resume.user_id,
+        raw_text=raw_text,
+        parsed_data=parsed_data,
+    )
+    return {
+        "resume_id": str(resume.id),
+        "parsed_data": parsed_data or {},
+    }
 
 
 # ----- Single-analysis endpoint (mounted at /api/analyses/{id} via separate router) -----

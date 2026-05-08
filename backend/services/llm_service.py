@@ -11,7 +11,16 @@ _client = AsyncClient(host=settings.OLLAMA_BASE_URL, timeout=120)
 
 MAX_TEXT_CHARS = 50_000
 
-_SYSTEM = """You are a resume parser. Extract structured information from resume text.
+_SYSTEM = """You are a resume parser. Your job is EXTRACTION, not summarization.
+
+CRITICAL — experience.description rules:
+- For each job/role, extract EVERY bullet point, responsibility, and achievement listed in the resume.
+- Each bullet on the resume becomes ONE entry in the description array. Do not merge bullets.
+- Do NOT summarize, condense, paraphrase, or drop bullets. Preserve metrics, tools, and proper nouns verbatim.
+- NEVER abbreviate the array with "...", "etc.", "and more", "and other responsibilities", or any placeholder. Include all bullets in full.
+- If a role has 8 bullets, the description array MUST have 8 strings. If 12, return 12. If 15, return 15.
+- Copy each bullet's text as-is (you may strip leading bullet glyphs like "•", "-", "*", "·").
+- If you are tempted to shorten because the output feels long: do not. Output ALL bullets.
 
 Return ONLY a valid JSON object with these fields (omit any field not present in the resume):
 {
@@ -21,7 +30,7 @@ Return ONLY a valid JSON object with these fields (omit any field not present in
   "linkedin": "string",
   "summary": "string",
   "skills": ["string"],
-  "experience": [{"title": "string", "company": "string", "duration": "string", "description": "string"}],
+  "experience": [{"title": "string", "company": "string", "duration": "string", "description": ["bullet 1 verbatim", "bullet 2 verbatim", "bullet 3 verbatim", "..."]}],
   "education": [{"degree": "string", "institution": "string", "year": "string"}],
   "projects": [{"name": "string", "description": "string", "technologies": ["string"]}],
   "certifications": ["string"],
@@ -153,6 +162,14 @@ async def extract_resume_data(raw_text: str) -> dict:
     response = await _client.chat(
         model=settings.OLLAMA_MODEL,
         format="json",  # forces the model to output valid JSON
+        # Without explicit num_predict, Ollama can cap output and truncate the JSON
+        # mid-array — which silently drops bullets from experience.description.
+        # Generous limits + low temperature keep extraction faithful and complete.
+        options={
+            "num_ctx": 8192,
+            "num_predict": 4096,
+            "temperature": 0.1,
+        },
         messages=[
             {"role": "system", "content": _SYSTEM},
             {"role": "user", "content": f"Parse this resume:\n\n{text}"},
