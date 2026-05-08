@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     JWT_SECRET_KEY: str = "change-me-in-production"
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRE_MINUTES: int = 1440  # 24 hours
+    RESUME_BUILDER_SERVICE_URL: str = "http://localhost:8080"
 
 
 settings = Settings()
