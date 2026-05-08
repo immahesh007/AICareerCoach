@@ -20,6 +20,13 @@ def _get_model() -> SentenceTransformer:
     return SentenceTransformer(_MODEL_NAME)
 
 
+def _flatten_description(value) -> str:
+    # Newer parsed rows use a list; older rows are strings. Either is valid JSON.
+    if isinstance(value, list):
+        return " ".join(str(x).strip() for x in value if x)
+    return str(value or "")
+
+
 def _resume_to_text(data: dict) -> str:
     parts = []
     if s := data.get("summary"):
@@ -29,10 +36,10 @@ def _resume_to_text(data: dict) -> str:
         parts.append("Skills: " + ", ".join(skill_strs))
     for exp in data.get("experience", []):
         parts.append(
-            f"{exp.get('title', '')} at {exp.get('company', '')} — {exp.get('description', '')}"
+            f"{exp.get('title', '')} at {exp.get('company', '')} — {_flatten_description(exp.get('description'))}"
         )
     for proj in data.get("projects", []):
-        parts.append(f"Project {proj.get('name', '')}: {proj.get('description', '')}")
+        parts.append(f"Project {proj.get('name', '')}: {_flatten_description(proj.get('description'))}")
     if certs := data.get("certifications"):
         cert_strs = [
             c if isinstance(c, str) else c.get("name") or c.get("title") or str(c)

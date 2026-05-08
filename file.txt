@@ -413,3 +413,10 @@ To develop a centralized User Dashboard for managing uploaded resumes and their 
 1. **User Dashboard** (Main Table) -> Click "View Results" -> **ATS Dashboard** (/ats-dashboard).
 2. **ATS Dashboard** -> Click "View JD" -> **Modal** (Scrollable JD text).
 3. **User Dashboard** -> Click "More" -> **Analysis Setup** -> Refresh Dashboard.
+
+
+==================
+
+Now I want to wire up resume-builder page with the analysis history page of the dashboard.
+Each analysis row should get a button named modify resume or something similar which is rendering to resume-builder page.
+When the user clicks the button on the analysis row, the resume builder page should open with prefilled inputs needed to make resume from the current resume for which analysis was made on.

@@ -41,6 +41,11 @@ export interface DownloadUrlResponse {
   expires_in: number;
 }
 
+export interface ParsedResumeResponse {
+  resume_id: string;
+  parsed_data: Record<string, unknown>;
+}
+
 function authHeaders(): HeadersInit {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (typeof window !== 'undefined') {
@@ -88,6 +93,21 @@ export async function getResumeDownloadUrl(resumeId: string): Promise<DownloadUr
     headers: authHeaders(),
   });
   return parseOrThrow<DownloadUrlResponse>(res, 'Failed to get download link.');
+}
+
+export async function getParsedResume(resumeId: string): Promise<ParsedResumeResponse> {
+  const res = await fetch(`/api/resumes/${resumeId}/parsed`, {
+    headers: authHeaders(),
+  });
+  return parseOrThrow<ParsedResumeResponse>(res, 'Failed to load parsed resume.');
+}
+
+export async function reparseResume(resumeId: string): Promise<ParsedResumeResponse> {
+  const res = await fetch(`/api/resumes/${resumeId}/reparse`, {
+    method: 'POST',
+    headers: authHeaders(),
+  });
+  return parseOrThrow<ParsedResumeResponse>(res, 'Failed to re-parse resume.');
 }
 
 export async function triggerNewAnalysis(

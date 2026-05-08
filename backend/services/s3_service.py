@@ -32,3 +32,10 @@ async def get_presigned_url(key: str, expires_in: int = 900) -> str:
             Params={"Bucket": settings.S3_BUCKET_NAME, "Key": key},
             ExpiresIn=expires_in,
         )
+
+
+async def download_file(key: str) -> bytes:
+    async with _session.client("s3") as s3:
+        resp = await s3.get_object(Bucket=settings.S3_BUCKET_NAME, Key=key)
+        async with resp["Body"] as stream:
+            return await stream.read()

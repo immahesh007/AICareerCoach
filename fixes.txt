@@ -1,0 +1,6 @@
+1) Sometime resume upload fails it shows a fail msg on the UI.
+but resume gets listed on the dashboard.
+
+2) on the UI analysis shows socket error, but the execution completes
+
+

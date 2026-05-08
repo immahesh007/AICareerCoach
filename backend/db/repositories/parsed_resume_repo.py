@@ -49,3 +49,29 @@ async def get_parsed_by_resume_id(
         select(ParsedResume).where(ParsedResume.resume_id == resume_id)
     )
     return result.scalar_one_or_none()
+
+
+async def upsert_parsed_data(
+    db: AsyncSession,
+    *,
+    resume_id: uuid.UUID,
+    user_id: str,
+    raw_text: Optional[str],
+    parsed_data: dict,
+) -> ParsedResume:
+    existing = await get_parsed_by_resume_id(db, resume_id)
+    if existing is None:
+        return await insert_parsed(
+            db,
+            resume_id=resume_id,
+            user_id=user_id,
+            raw_text=raw_text,
+            parsed_data=parsed_data,
+        )
+    await db.execute(
+        sa_update(ParsedResume)
+        .where(ParsedResume.resume_id == resume_id)
+        .values(raw_text=raw_text, parsed_data=parsed_data or {})
+    )
+    await db.refresh(existing)
+    return existing
