@@ -6,6 +6,10 @@ import Navbar from '@/components/Navbar';
 import ResumePreview from './ResumePreview';
 import { getParsedResume, reparseResume } from '@/services/dashboardService';
 import { parsedToBuilder } from '@/utils/parsedToBuilder';
+import {
+  SUGGESTION_HANDOFF_KEY,
+  type ApprovedSuggestionsHandoff,
+} from './SuggestionReview';
 import type {
   Award,
   Basics,
@@ -17,6 +21,58 @@ import type {
   SkillCategory,
   VolunteerItem,
 } from '@/types/resume';
+
+function readHandoff(resumeId: string): ApprovedSuggestionsHandoff | null {
+  if (typeof window === 'undefined') return null;
+  const raw = sessionStorage.getItem(SUGGESTION_HANDOFF_KEY);
+  console.log('[suggestions] readHandoff — urlResumeId:', resumeId, 'sessionStorage raw:', raw);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as ApprovedSuggestionsHandoff;
+    console.log('[suggestions] handoff parsed — handoff.resume_id:', parsed.resume_id, 'match:', parsed.resume_id === resumeId);
+    if (parsed.resume_id !== resumeId) return null;
+    return parsed;
+  } catch (err) {
+    console.warn('[suggestions] handoff parse error:', err);
+    return null;
+  }
+}
+
+function applyHandoff(base: ResumeData, h: ApprovedSuggestionsHandoff): ResumeData {
+  const next: ResumeData = {
+    ...base,
+    skillCategories: base.skillCategories.map(s => ({ ...s })),
+    experience: base.experience.map(e => ({ ...e, bullets: [...e.bullets] })),
+  };
+
+  if (h.summary && h.summary.trim()) {
+    next.summary = h.summary.trim();
+  }
+
+  if (h.skills.length > 0) {
+    // Append approved skill additions to the first existing category that has
+    // any items; if none has content, fall back to the first category.
+    const targetIdx = next.skillCategories.findIndex(s => s.items.trim().length > 0);
+    const idx = targetIdx >= 0 ? targetIdx : 0;
+    if (next.skillCategories[idx]) {
+      const existing = next.skillCategories[idx].items.trim();
+      const additions = h.skills.join(', ');
+      next.skillCategories[idx] = {
+        ...next.skillCategories[idx],
+        items: existing ? `${existing}, ${additions}` : additions,
+      };
+    }
+  }
+
+  for (const ex of h.experience) {
+    const exp = next.experience[ex.experience_index];
+    if (!exp) continue;
+    if (ex.bullet_index < 0 || ex.bullet_index >= exp.bullets.length) continue;
+    exp.bullets[ex.bullet_index] = ex.suggested;
+  }
+
+  return next;
+}
 
 // ─── defaults ─────────────────────────────────────────────────────────────────
 
@@ -50,6 +106,7 @@ const EMPTY_VOL: VolunteerItem = { org: '', location: '', description: '', durat
 
 const INITIAL: ResumeData = {
   basics: { ...EMPTY_BASICS },
+  summary: '',
   education: [{ ...EMPTY_EDU }],
   skillCategories: DEFAULT_SKILLS.map(s => ({ ...s })),
   experience: [{ ...EMPTY_EXP, bullets: [''] }],
@@ -124,6 +181,7 @@ export default function ResumeBuilderClient() {
   );
   const [prefillError, setPrefillError] = useState<string | null>(null);
   const [reparsing, setReparsing] = useState(false);
+  const [appliedSuggestions, setAppliedSuggestions] = useState(0);
 
   useEffect(() => {
     if (!resumeIdParam) return;
@@ -133,7 +191,23 @@ export default function ResumeBuilderClient() {
     getParsedResume(resumeIdParam)
       .then(res => {
         if (cancelled) return;
-        setData(parsedToBuilder(res.parsed_data));
+        const base = parsedToBuilder(res.parsed_data);
+        const handoff = readHandoff(resumeIdParam);
+        if (handoff) {
+          console.log('[suggestions] applying handoff:', handoff);
+          setData(applyHandoff(base, handoff));
+          const applied =
+            (handoff.summary ? 1 : 0) +
+            handoff.skills.length +
+            handoff.experience.length;
+          console.log('[suggestions] applied count:', applied);
+          setAppliedSuggestions(applied);
+          // Consume the handoff so a refresh doesn't re-apply on top of edits.
+          sessionStorage.removeItem(SUGGESTION_HANDOFF_KEY);
+        } else {
+          console.log('[suggestions] no handoff to apply');
+          setData(base);
+        }
         setPrefillState('success');
       })
       .catch(err => {
@@ -153,6 +227,7 @@ export default function ResumeBuilderClient() {
     try {
       const res = await reparseResume(resumeIdParam);
       setData(parsedToBuilder(res.parsed_data));
+      setAppliedSuggestions(0);
       setPrefillState('success');
     } catch (err) {
       setPrefillError(err instanceof Error ? err.message : 'Re-extract failed.');
@@ -313,6 +388,11 @@ export default function ResumeBuilderClient() {
               Prefilling from your uploaded resume…
             </div>
           )}
+          {prefillState === 'success' && appliedSuggestions > 0 && (
+            <div className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+              Applied {appliedSuggestions} approved suggestion{appliedSuggestions === 1 ? '' : 's'} from your ATS analysis. Review the highlighted sections before generating.
+            </div>
+          )}
           {prefillState === 'success' && (
             <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200">
               <span>Prefilled from your uploaded resume — review and edit before generating.</span>
@@ -357,6 +437,18 @@ export default function ResumeBuilderClient() {
               <Field label="Phone / Mobile" value={data.basics.phone}
                 onChange={v => setBasics('phone', v)} placeholder="+1-XXX-XXX-XXXX" />
             </div>
+          </section>
+
+          {/* SUMMARY */}
+          <section className="mb-8">
+            <p className={sectionTitleCls}>Summary</p>
+            <textarea
+              className={`${inputCls} resize-none`}
+              rows={3}
+              value={data.summary}
+              onChange={e => setData(d => ({ ...d, summary: e.target.value }))}
+              placeholder="2 to 4 sentences describing your experience and what you bring to the role…"
+            />
           </section>
 
           {/* EDUCATION */}

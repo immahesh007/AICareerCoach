@@ -100,7 +100,7 @@ function BulletRow({ children }: { children: React.ReactNode }) {
 // ─── main component ───────────────────────────────────────────────────────────
 
 export default function ResumePreview({ data }: { data: ResumeData }) {
-  const { basics, education, skillCategories, experience, projects, publications, awards, volunteer } = data;
+  const { basics, summary, education, skillCategories, experience, projects, publications, awards, volunteer } = data;
 
   const any = (arr?: unknown[]) => arr && arr.length > 0;
 
@@ -123,6 +123,14 @@ export default function ResumePreview({ data }: { data: ResumeData }) {
           {basics.phone && <div style={S.contactLine}>Mobile: &nbsp;{basics.phone}</div>}
         </div>
       </div>
+
+      {/* ── SUMMARY ────────────────────────────────────────────────────────── */}
+      {summary && summary.trim() && (
+        <>
+          <SectionHeader title="Summary" />
+          <div style={{ marginBottom: '4px' }}>{summary}</div>
+        </>
+      )}
 
       {/* ── EDUCATION ──────────────────────────────────────────────────────── */}
       {any(education) && (

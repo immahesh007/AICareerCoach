@@ -78,6 +78,32 @@ class ATSEvaluation(Base):
     __table_args__ = (Index("ix_ats_evaluations_resume_id", "resume_id"),)
 
 
+class ResumeSuggestion(Base):
+    __tablename__ = "resume_suggestions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    evaluation_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("ats_evaluations.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    resume_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("resume_metadata.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    suggestions = Column(JSONB, nullable=False)
+    decisions = Column(JSONB, nullable=True)
+    model = Column(Text, nullable=False)
+    generated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+    decided_at = Column(TIMESTAMP(timezone=True), nullable=True)
+
+    __table_args__ = (
+        Index("ix_resume_suggestions_evaluation", "evaluation_id", "generated_at"),
+        Index("ix_resume_suggestions_resume", "resume_id"),
+    )
+
+
 class User(Base):
     __tablename__ = "users"
 

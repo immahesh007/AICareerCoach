@@ -8,10 +8,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.auth_dep import get_current_user_id
 from db.connection import get_db
-from db.repositories.parsed_resume_repo import update_parsed_jd
+from db.repositories.ats_repo import get_evaluation
+from db.repositories.parsed_resume_repo import get_parsed_by_resume_id, update_parsed_jd
 from db.repositories.resume_repo import get_resume
+from db.repositories.suggestion_repo import (
+    get_latest_for_evaluation,
+    get_suggestion,
+    insert_suggestions,
+    record_decisions,
+)
 from services.ats_service import compute_ats_score
 from services.llm_service import extract_jd_data
+from services.suggestion_service import generate_suggestions
 
 logger = logging.getLogger(__name__)
 
@@ -77,3 +85,140 @@ async def know_ats(
         "match_report": evaluation.get("match_report", ""),
         "message": "ATS analysis complete.",
     }
+
+
+class SuggestModificationsRequest(BaseModel):
+    evaluation_id: str
+
+
+@router.post("/suggest-modifications")
+async def suggest_modifications(
+    request: SuggestModificationsRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user_id: str = Depends(get_current_user_id),
+):
+    try:
+        evaluation_uuid = uuid.UUID(request.evaluation_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid evaluation_id format.")
+
+    evaluation = await get_evaluation(db, evaluation_id=evaluation_uuid)
+    if evaluation is None:
+        raise HTTPException(status_code=404, detail="Evaluation not found.")
+
+    resume = await get_resume(db, resume_id=evaluation.resume_id)
+    if resume is None or resume.user_id != current_user_id:
+        # 404 (not 403) — don't leak existence of other users' resumes
+        raise HTTPException(status_code=404, detail="Evaluation not found.")
+
+    parsed = await get_parsed_by_resume_id(db, evaluation.resume_id)
+    if parsed is None or not parsed.parsed_data:
+        raise HTTPException(
+            status_code=409,
+            detail="Resume has not been parsed yet — cannot generate suggestions.",
+        )
+
+    evaluation_payload = {
+        "weaknesses": evaluation.weaknesses or [],
+        "missing_keywords": evaluation.missing_keywords or [],
+        "experience_fit": evaluation.experience_fit or "",
+        "match_report": evaluation.match_report or "",
+    }
+
+    try:
+        result = await generate_suggestions(
+            parsed_resume=parsed.parsed_data,
+            parsed_jd=parsed.parsed_jd,
+            jd_text=evaluation.jd_text,
+            evaluation=evaluation_payload,
+        )
+    except Exception as exc:
+        logger.exception("Suggestion generation failed")
+        raise HTTPException(
+            status_code=503, detail="AI service unavailable — is Ollama running?"
+        ) from exc
+
+    record = await insert_suggestions(
+        db,
+        evaluation_id=evaluation.id,
+        resume_id=evaluation.resume_id,
+        suggestions=result["suggestions"],
+        model=result["model"],
+    )
+
+    return {
+        "suggestion_id": str(record.id),
+        "evaluation_id": str(evaluation.id),
+        "resume_id": str(evaluation.resume_id),
+        **result,
+    }
+
+
+@router.get("/suggest-modifications/latest")
+async def get_latest_suggestion_for_evaluation(
+    evaluation_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user_id: str = Depends(get_current_user_id),
+):
+    # Recovery endpoint for clients whose POST /suggest-modifications request
+    # timed out at the HTTP layer (proxy / browser) while the server-side LLM
+    # call still completed and inserted a row.
+    try:
+        evaluation_uuid = uuid.UUID(evaluation_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid evaluation_id format.")
+
+    evaluation = await get_evaluation(db, evaluation_id=evaluation_uuid)
+    if evaluation is None:
+        raise HTTPException(status_code=404, detail="Suggestion not found.")
+
+    resume = await get_resume(db, resume_id=evaluation.resume_id)
+    if resume is None or resume.user_id != current_user_id:
+        # 404 (not 403) — don't leak existence of other users' evaluations
+        raise HTTPException(status_code=404, detail="Suggestion not found.")
+
+    record = await get_latest_for_evaluation(db, evaluation_id=evaluation_uuid)
+    if record is None:
+        raise HTTPException(status_code=404, detail="Suggestion not found.")
+
+    return {
+        "suggestion_id": str(record.id),
+        "evaluation_id": str(record.evaluation_id),
+        "resume_id": str(record.resume_id),
+        "suggestions": record.suggestions,
+        "model": record.model,
+    }
+
+
+class RecordDecisionsRequest(BaseModel):
+    decisions: dict[str, bool]
+
+
+@router.post("/suggest-modifications/{suggestion_id}/decisions")
+async def record_suggestion_decisions(
+    suggestion_id: str,
+    request: RecordDecisionsRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user_id: str = Depends(get_current_user_id),
+):
+    try:
+        suggestion_uuid = uuid.UUID(suggestion_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid suggestion_id format.")
+
+    suggestion = await get_suggestion(db, suggestion_id=suggestion_uuid)
+    if suggestion is None:
+        raise HTTPException(status_code=404, detail="Suggestion not found.")
+
+    resume = await get_resume(db, resume_id=suggestion.resume_id)
+    if resume is None or resume.user_id != current_user_id:
+        # 404 (not 403) — don't leak existence of other users' suggestions
+        raise HTTPException(status_code=404, detail="Suggestion not found.")
+
+    await record_decisions(
+        db,
+        suggestion_id=suggestion_uuid,
+        decisions=request.decisions,
+    )
+
+    return {"suggestion_id": suggestion_id, "recorded": len(request.decisions)}

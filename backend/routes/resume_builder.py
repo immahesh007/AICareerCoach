@@ -50,6 +50,7 @@ class Award(BaseModel):
 
 class ResumeGenerateRequest(BaseModel):
     basics: BasicsModel = BasicsModel()
+    summary: str = ""
     education: list[EducationItem] = []
     experience: list[ExperienceItem] = []
     skills: list[SkillLevel] = []

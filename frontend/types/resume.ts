@@ -59,6 +59,7 @@ export interface VolunteerItem {
 
 export interface ResumeData {
   basics: Basics;
+  summary: string;
   education: EducationItem[];
   skillCategories: SkillCategory[];
   experience: ExperienceItem[];
