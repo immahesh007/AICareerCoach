@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
+  getLatestSuggestion,
   recordSuggestionDecisions,
   suggestModifications,
   type SuggestModificationsResponse,
@@ -65,25 +66,49 @@ export default function SuggestionReview({ evaluationId, resumeId }: Props) {
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    setError(null);
-    suggestModifications(evaluationId)
-      .then(res => {
-        if (cancelled) return;
-        setData(res);
-        const initial: Record<string, boolean> = {};
-        if (res.suggestions.summary) initial[res.suggestions.summary.suggestion_id] = true;
-        for (const s of res.suggestions.skills) initial[s.suggestion_id] = true;
-        for (const e of res.suggestions.experience) initial[e.suggestion_id] = true;
-        setApproved(initial);
-      })
-      .catch(err => {
-        if (cancelled) return;
-        setError(err instanceof Error ? err.message : 'Could not generate suggestions.');
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+
+    const load = async () => {
+      setLoading(true);
+      setError(null);
+
+      let res: SuggestModificationsResponse;
+      // Prefer the cached row — revisits to this page shouldn't re-run the
+      // LLM (20-40s) when a suggestion already exists for this evaluation.
+      try {
+        res = await getLatestSuggestion(evaluationId);
+      } catch {
+        // No row yet — generate. If the POST fails at the HTTP layer (proxy
+        // timeout) while the server-side LLM call still completes, retry the
+        // GET as recovery before surfacing the error.
+        try {
+          res = await suggestModifications(evaluationId);
+        } catch (postErr) {
+          try {
+            res = await getLatestSuggestion(evaluationId);
+          } catch {
+            if (!cancelled) {
+              setError(
+                postErr instanceof Error ? postErr.message : 'Could not generate suggestions.',
+              );
+              setLoading(false);
+            }
+            return;
+          }
+        }
+      }
+
+      if (cancelled) return;
+      setData(res);
+      const initial: Record<string, boolean> = {};
+      if (res.suggestions.summary) initial[res.suggestions.summary.suggestion_id] = true;
+      for (const s of res.suggestions.skills) initial[s.suggestion_id] = true;
+      for (const e of res.suggestions.experience) initial[e.suggestion_id] = true;
+      setApproved(initial);
+      setLoading(false);
+    };
+
+    void load();
+
     return () => {
       cancelled = true;
     };

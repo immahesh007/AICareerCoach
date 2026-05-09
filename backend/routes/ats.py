@@ -12,6 +12,7 @@ from db.repositories.ats_repo import get_evaluation
 from db.repositories.parsed_resume_repo import get_parsed_by_resume_id, update_parsed_jd
 from db.repositories.resume_repo import get_resume
 from db.repositories.suggestion_repo import (
+    get_latest_for_evaluation,
     get_suggestion,
     insert_suggestions,
     record_decisions,
@@ -150,6 +151,42 @@ async def suggest_modifications(
         "evaluation_id": str(evaluation.id),
         "resume_id": str(evaluation.resume_id),
         **result,
+    }
+
+
+@router.get("/suggest-modifications/latest")
+async def get_latest_suggestion_for_evaluation(
+    evaluation_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user_id: str = Depends(get_current_user_id),
+):
+    # Recovery endpoint for clients whose POST /suggest-modifications request
+    # timed out at the HTTP layer (proxy / browser) while the server-side LLM
+    # call still completed and inserted a row.
+    try:
+        evaluation_uuid = uuid.UUID(evaluation_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid evaluation_id format.")
+
+    evaluation = await get_evaluation(db, evaluation_id=evaluation_uuid)
+    if evaluation is None:
+        raise HTTPException(status_code=404, detail="Suggestion not found.")
+
+    resume = await get_resume(db, resume_id=evaluation.resume_id)
+    if resume is None or resume.user_id != current_user_id:
+        # 404 (not 403) — don't leak existence of other users' evaluations
+        raise HTTPException(status_code=404, detail="Suggestion not found.")
+
+    record = await get_latest_for_evaluation(db, evaluation_id=evaluation_uuid)
+    if record is None:
+        raise HTTPException(status_code=404, detail="Suggestion not found.")
+
+    return {
+        "suggestion_id": str(record.id),
+        "evaluation_id": str(record.evaluation_id),
+        "resume_id": str(record.resume_id),
+        "suggestions": record.suggestions,
+        "model": record.model,
     }
 
 
