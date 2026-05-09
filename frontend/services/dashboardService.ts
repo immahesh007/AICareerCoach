@@ -156,6 +156,16 @@ export async function suggestModifications(
   return parseOrThrow<SuggestModificationsResponse>(res, 'Could not generate suggestions.');
 }
 
+export async function getLatestSuggestion(
+  evaluationId: string,
+): Promise<SuggestModificationsResponse> {
+  const res = await fetch(
+    `/api/suggest-modifications/latest?evaluation_id=${encodeURIComponent(evaluationId)}`,
+    { headers: authHeaders() },
+  );
+  return parseOrThrow<SuggestModificationsResponse>(res, 'Could not load suggestions.');
+}
+
 export async function recordSuggestionDecisions(
   suggestionId: string,
   decisions: Record<string, boolean>,
