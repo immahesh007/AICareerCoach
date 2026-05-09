@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense, useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import type { ATSResult } from '@/services/ats';
@@ -20,6 +21,7 @@ type DisplayResult = {
   match_report: string | null;
   jd_title?: string | null;
   timestamp?: string | null;
+  resume_id?: string | null;
 };
 
 function scoreColor(score: number) {
@@ -118,6 +120,7 @@ function fromBackend(a: SingleAnalysisResponse): DisplayResult {
     match_report: a.match_report,
     jd_title: a.jd_title,
     timestamp: a.timestamp,
+    resume_id: a.resume_id,
   };
 }
 
@@ -225,7 +228,16 @@ function ATSDashboardContent() {
 
       <Navbar />
 
-      <main className="relative z-10 max-w-5xl mx-auto px-6 pt-32 pb-20">
+      <main className="relative z-10 max-w-5xl mx-auto px-6 pt-28 pb-20">
+        <Link
+          href={result.resume_id ? `/resumes/${result.resume_id}/analyses` : '/dashboard'}
+          className="inline-flex items-center gap-1.5 text-indigo-200 hover:text-white text-sm mb-6 transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+          {result.resume_id ? 'Back to analysis history' : 'Back to dashboard'}
+        </Link>
 
         <div className="flex flex-col items-center text-center mb-14 animate-fade-in-up">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 text-indigo-200 text-sm font-medium mb-8">
@@ -254,16 +266,6 @@ function ATSDashboardContent() {
               />
             </div>
           </div>
-
-          <button
-            onClick={() => router.push('/dashboard')}
-            className="mt-8 px-6 py-2.5 rounded-full bg-white/10 border border-white/20 text-indigo-200 text-sm font-medium hover:bg-white/15 transition-colors inline-flex items-center gap-2"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
-            Back to Dashboard
-          </button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">

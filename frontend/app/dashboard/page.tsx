@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import ResumeTable from '@/components/dashboard/ResumeTable';
@@ -88,6 +89,16 @@ function DashboardContent() {
       <Navbar />
 
       <main className="relative z-10 max-w-6xl mx-auto px-6 pt-28 pb-20">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-1.5 text-indigo-200 hover:text-white text-sm mb-6 transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+          Back to home
+        </Link>
+
         <div className="mb-8 flex items-end justify-between gap-4 flex-wrap">
           <div>
             <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight">My Resumes</h1>

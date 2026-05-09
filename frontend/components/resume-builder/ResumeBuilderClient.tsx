@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import ResumePreview from './ResumePreview';
@@ -374,6 +375,15 @@ export default function ResumeBuilderClient() {
 
         {/* ── LEFT: editor ──────────────────────────────────────────────── */}
         <div className="w-1/2 overflow-y-auto border-r border-white/10 px-8 py-8">
+          <Link
+            href={resumeIdParam ? `/resumes/${resumeIdParam}/analyses` : '/dashboard'}
+            className="inline-flex items-center gap-1.5 text-indigo-200 hover:text-white text-sm mb-4 transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            {resumeIdParam ? 'Back to analysis history' : 'Back to dashboard'}
+          </Link>
           <h1 className="text-2xl font-black text-white mb-1">Resume Builder</h1>
           <p className="text-indigo-300 text-sm mb-4">
             Fill in your details — the preview updates live on the right.

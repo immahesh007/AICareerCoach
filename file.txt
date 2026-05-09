@@ -429,3 +429,14 @@ The overall goal of this task is to improve resume ATS score and align the resum
 Provide option to approve or reject the suggestions provided.
 Recommend me best LLM presnet to perform this task, This feature should provide value to candidate analysing their resume against the JD.
 First provide me plan, Do not start coding right away.
+
+
+Minor UI fixed;
+Make the back button consistent throughout the platform, which is top left.
+ats-dashboard page has back button in the middle. The back button should not render to the dashboard, rather it should render to the analysis history page
+resume-builder page doesn't have a back button. Add it 
+
+Add a three bar menue button on the landing page,
+move dashboard to this menu and
+add a resume builder to this menu
+the resume builder will render to resume builder page with empty resume and resume editor
