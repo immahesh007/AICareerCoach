@@ -63,22 +63,14 @@ function SavedResumeViewer() {
 
   const handlePrint = useCallback(() => {
     if (!data) return;
-    const el = document.getElementById('resume-preview');
-    if (!el) return;
-    const w = window.open('', '_blank');
-    if (!w) return;
-    w.document.write(`<!DOCTYPE html><html><head>
-      <title>${data.name || 'Resume'}</title>
-      <meta charset="utf-8">
-      <style>
-        *{box-sizing:border-box;margin:0;padding:0;}
-        body{font-family:'TeX Gyre Heros','Helvetica Neue',Helvetica,Arial,sans-serif;}
-        @page{margin:0;size:letter;}
-      </style>
-    </head><body>${el.outerHTML}</body></html>`);
-    w.document.close();
-    w.focus();
-    setTimeout(() => w.print(), 300);
+    const previousTitle = document.title;
+    document.title = (data.name || 'Resume').trim();
+    const restore = () => {
+      document.title = previousTitle;
+      window.removeEventListener('afterprint', restore);
+    };
+    window.addEventListener('afterprint', restore);
+    window.print();
   }, [data]);
 
   // Auto-trigger print when the user clicked "Download" on the listing page.
@@ -154,8 +146,8 @@ function SavedResumeViewer() {
               </button>
             </div>
 
-            <div className="rounded-2xl bg-gray-200/10 p-4">
-              <div className="bg-white shadow-xl rounded">
+            <div className="rounded-2xl bg-gray-200/10 p-4 overflow-auto">
+              <div className="w-fit mx-auto">
                 <ResumePreview data={data.resume_data} />
               </div>
             </div>
