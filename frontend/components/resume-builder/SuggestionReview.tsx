@@ -59,10 +59,20 @@ export default function SuggestionReview({ evaluationId, resumeId }: Props) {
   const router = useRouter();
   const [data, setData] = useState<SuggestModificationsResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [regenerating, setRegenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Approval state, keyed by suggestion_id; default-approved on load
   const [approved, setApproved] = useState<Record<string, boolean>>({});
+
+  const applyResult = (res: SuggestModificationsResponse) => {
+    setData(res);
+    const initial: Record<string, boolean> = {};
+    if (res.suggestions.summary) initial[res.suggestions.summary.suggestion_id] = true;
+    for (const s of res.suggestions.skills) initial[s.suggestion_id] = true;
+    for (const e of res.suggestions.experience) initial[e.suggestion_id] = true;
+    setApproved(initial);
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -98,12 +108,7 @@ export default function SuggestionReview({ evaluationId, resumeId }: Props) {
       }
 
       if (cancelled) return;
-      setData(res);
-      const initial: Record<string, boolean> = {};
-      if (res.suggestions.summary) initial[res.suggestions.summary.suggestion_id] = true;
-      for (const s of res.suggestions.skills) initial[s.suggestion_id] = true;
-      for (const e of res.suggestions.experience) initial[e.suggestion_id] = true;
-      setApproved(initial);
+      applyResult(res);
       setLoading(false);
     };
 
@@ -113,6 +118,32 @@ export default function SuggestionReview({ evaluationId, resumeId }: Props) {
       cancelled = true;
     };
   }, [evaluationId]);
+
+  const handleRegenerate = async () => {
+    if (regenerating || loading) return;
+    setRegenerating(true);
+    setError(null);
+    try {
+      // Bypass the cache: POST always generates a fresh suggestion row.
+      // Fall back to GET /latest on HTTP-layer failure since the server may
+      // have completed the LLM call and inserted a row anyway.
+      let res: SuggestModificationsResponse;
+      try {
+        res = await suggestModifications(evaluationId);
+      } catch (postErr) {
+        try {
+          res = await getLatestSuggestion(evaluationId);
+        } catch {
+          throw postErr;
+        }
+      }
+      applyResult(res);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not regenerate suggestions.');
+    } finally {
+      setRegenerating(false);
+    }
+  };
 
   const counts = useMemo(() => {
     if (!data) return { total: 0, approved: 0 };
@@ -179,10 +210,29 @@ export default function SuggestionReview({ evaluationId, resumeId }: Props) {
     );
   }
 
-  if (error) {
+  if (error && !data) {
     return (
-      <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
-        {error}
+      <div className="space-y-3">
+        <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+          {error}
+        </div>
+        <button
+          onClick={handleRegenerate}
+          disabled={regenerating}
+          className="px-4 py-2 rounded-full bg-white/10 hover:bg-white/15 disabled:opacity-60 disabled:cursor-not-allowed text-white/80 text-xs font-semibold border border-white/15 transition-colors inline-flex items-center gap-2"
+        >
+          {regenerating ? (
+            <>
+              <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+              Regenerating…
+            </>
+          ) : (
+            'Try again'
+          )}
+        </button>
       </div>
     );
   }
@@ -192,19 +242,61 @@ export default function SuggestionReview({ evaluationId, resumeId }: Props) {
   const { summary, skills, experience } = data.suggestions;
   const noSuggestions = !summary && skills.length === 0 && experience.length === 0;
 
+  const regenerateButton = (
+    <button
+      onClick={handleRegenerate}
+      disabled={regenerating}
+      className="px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/15 disabled:opacity-60 disabled:cursor-not-allowed text-white/80 text-[11px] font-semibold border border-white/15 transition-colors inline-flex items-center gap-1.5"
+      title="Regenerate suggestions with the latest AI model"
+    >
+      {regenerating ? (
+        <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+        </svg>
+      ) : (
+        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        </svg>
+      )}
+      {regenerating ? 'Regenerating…' : 'Regenerate'}
+    </button>
+  );
+
   if (noSuggestions) {
     return (
-      <div className={cardCls}>
-        <p className="text-white/80 text-sm">
-          No actionable suggestions found for this analysis. Your resume is already well aligned, or
-          the analysis didn&apos;t produce enough signal to safely propose changes.
-        </p>
+      <div className="space-y-3">
+        {error && (
+          <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+            {error}
+          </div>
+        )}
+        <div className={cardCls}>
+          <p className="text-white/80 text-sm">
+            No actionable suggestions found for this analysis. Your resume is already well aligned, or
+            the analysis didn&apos;t produce enough signal to safely propose changes.
+          </p>
+          <div className="mt-4">{regenerateButton}</div>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-8">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-[11px] text-indigo-300/80">
+          Not happy with these? Generate a fresh set — takes 20-40 seconds.
+        </p>
+        {regenerateButton}
+      </div>
+
+      {error && (
+        <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+          {error}
+        </div>
+      )}
+
       {summary && (
         <section>
           <p className={sectionTitleCls}>Summary</p>
@@ -299,7 +391,8 @@ export default function SuggestionReview({ evaluationId, resumeId }: Props) {
           </button>
           <button
             onClick={handleContinue}
-            className="px-5 py-2 rounded-full bg-violet-600 hover:bg-violet-500 text-white text-xs font-semibold transition-colors"
+            disabled={regenerating}
+            className="px-5 py-2 rounded-full bg-violet-600 hover:bg-violet-500 disabled:opacity-60 disabled:cursor-not-allowed text-white text-xs font-semibold transition-colors"
           >
             Continue to Builder →
           </button>
