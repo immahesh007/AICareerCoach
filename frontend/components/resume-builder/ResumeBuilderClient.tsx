@@ -8,6 +8,7 @@ import ResumePreview from './ResumePreview';
 import SaveResumeModal from './SaveResumeModal';
 import { useRouter } from 'next/navigation';
 import { getParsedResume, reparseResume } from '@/services/dashboardService';
+import { getSavedResume } from '@/services/savedResumesService';
 import { parsedToBuilder } from '@/utils/parsedToBuilder';
 import {
   SUGGESTION_HANDOFF_KEY,
@@ -182,13 +183,39 @@ export default function ResumeBuilderClient() {
   const [saveOpen, setSaveOpen] = useState(false);
   const [savedToast, setSavedToast] = useState<string | null>(null);
   const searchParams = useSearchParams();
-  const resumeIdParam = searchParams?.get('resume_id') ?? null;
+  const savedResumeIdParam = searchParams?.get('saved_resume_id') ?? null;
+  const resumeIdParam = savedResumeIdParam ? null : (searchParams?.get('resume_id') ?? null);
   const [prefillState, setPrefillState] = useState<'idle' | 'loading' | 'success' | 'error'>(
-    resumeIdParam ? 'loading' : 'idle'
+    resumeIdParam || savedResumeIdParam ? 'loading' : 'idle'
   );
   const [prefillError, setPrefillError] = useState<string | null>(null);
   const [reparsing, setReparsing] = useState(false);
   const [appliedSuggestions, setAppliedSuggestions] = useState(0);
+  const [editingName, setEditingName] = useState<string | null>(null);
+
+  // Load from a saved resume (Edit flow) — takes precedence over resume_id.
+  useEffect(() => {
+    if (!savedResumeIdParam) return;
+    let cancelled = false;
+    setPrefillState('loading');
+    setPrefillError(null);
+    setEditingName(null);
+    getSavedResume(savedResumeIdParam)
+      .then(res => {
+        if (cancelled) return;
+        setData(res.resume_data);
+        setEditingName(res.name);
+        setPrefillState('success');
+      })
+      .catch(err => {
+        if (cancelled) return;
+        setPrefillError(err instanceof Error ? err.message : 'Could not load saved resume.');
+        setPrefillState('error');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [savedResumeIdParam]);
 
   useEffect(() => {
     if (!resumeIdParam) return;
@@ -382,13 +409,23 @@ export default function ResumeBuilderClient() {
         {/* ── LEFT: editor ──────────────────────────────────────────────── */}
         <div className="w-1/2 overflow-y-auto border-r border-white/10 px-8 py-8">
           <Link
-            href={resumeIdParam ? `/resumes/${resumeIdParam}/analyses` : '/dashboard'}
+            href={
+              savedResumeIdParam
+                ? '/saved-resumes'
+                : resumeIdParam
+                  ? `/resumes/${resumeIdParam}/analyses`
+                  : '/dashboard'
+            }
             className="inline-flex items-center gap-1.5 text-indigo-200 hover:text-white text-sm mb-4 transition-colors"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
-            {resumeIdParam ? 'Back to analysis history' : 'Back to dashboard'}
+            {savedResumeIdParam
+              ? 'Back to saved resumes'
+              : resumeIdParam
+                ? 'Back to analysis history'
+                : 'Back to dashboard'}
           </Link>
           <h1 className="text-2xl font-black text-white mb-1">Resume Builder</h1>
           <p className="text-indigo-300 text-sm mb-4">
@@ -401,15 +438,20 @@ export default function ResumeBuilderClient() {
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
               </svg>
-              Prefilling from your uploaded resume…
+              {savedResumeIdParam ? 'Loading saved resume…' : 'Prefilling from your uploaded resume…'}
             </div>
           )}
-          {prefillState === 'success' && appliedSuggestions > 0 && (
+          {prefillState === 'success' && savedResumeIdParam && (
+            <div className="mb-6 rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-2 text-xs text-violet-100">
+              Editing saved resume{editingName ? `: ${editingName}` : ''}. Changes you save will create a new saved resume — your original stays untouched.
+            </div>
+          )}
+          {prefillState === 'success' && !savedResumeIdParam && appliedSuggestions > 0 && (
             <div className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
               Applied {appliedSuggestions} approved suggestion{appliedSuggestions === 1 ? '' : 's'} from your ATS analysis. Review the highlighted sections before generating.
             </div>
           )}
-          {prefillState === 'success' && (
+          {prefillState === 'success' && !savedResumeIdParam && (
             <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200">
               <span>Prefilled from your uploaded resume — review and edit before generating.</span>
               {resumeIdParam && (
