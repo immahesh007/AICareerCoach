@@ -461,41 +461,6 @@ export default function ResumeBuilderClient() {
             />
           </section>
 
-          {/* EDUCATION */}
-          <section className="mb-8">
-            <p className={sectionTitleCls}>Education</p>
-            <div className="space-y-4">
-              {data.education.map((edu, i) => (
-                <div key={i} className={cardCls}>
-                  <div className="flex justify-between items-center mb-3">
-                    <span className="text-xs text-indigo-300 font-semibold">Degree {i + 1}</span>
-                    {data.education.length > 1 && (
-                      <button onClick={() => removeEdu(i)} className={removeBtnCls}>Remove</button>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <Field label="Institution" value={edu.institution}
-                      onChange={v => setEdu(i, 'institution', v)}
-                      placeholder="University / College Name" />
-                    <Field label="Location" value={edu.location}
-                      onChange={v => setEdu(i, 'location', v)} placeholder="City, Country" />
-                    <Field label="Degree / Program" value={edu.degree}
-                      onChange={v => setEdu(i, 'degree', v)}
-                      placeholder="Bachelor of Science - Computer Science" fullWidth />
-                    <Field label="GPA" value={edu.gpa}
-                      onChange={v => setEdu(i, 'gpa', v)} placeholder="3.8" />
-                    <Field label="Years" value={edu.years}
-                      onChange={v => setEdu(i, 'years', v)} placeholder="Aug 2018 - May 2022" />
-                    <Field label="Courses" value={edu.coursework}
-                      onChange={v => setEdu(i, 'coursework', v)}
-                      placeholder="Data Structures, Algorithms, Operating Systems…" fullWidth />
-                  </div>
-                </div>
-              ))}
-            </div>
-            <AddButton onClick={addEdu} label="Add Degree" />
-          </section>
-
           {/* SKILLS SUMMARY */}
           <section className="mb-8">
             <p className={sectionTitleCls}>Skills Summary</p>
@@ -643,6 +608,41 @@ export default function ResumeBuilderClient() {
               ))}
             </div>
             <AddButton onClick={addPub} label="Add Publication" />
+          </section>
+
+          {/* EDUCATION */}
+          <section className="mb-8">
+            <p className={sectionTitleCls}>Education</p>
+            <div className="space-y-4">
+              {data.education.map((edu, i) => (
+                <div key={i} className={cardCls}>
+                  <div className="flex justify-between items-center mb-3">
+                    <span className="text-xs text-indigo-300 font-semibold">Degree {i + 1}</span>
+                    {data.education.length > 1 && (
+                      <button onClick={() => removeEdu(i)} className={removeBtnCls}>Remove</button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field label="Institution" value={edu.institution}
+                      onChange={v => setEdu(i, 'institution', v)}
+                      placeholder="University / College Name" />
+                    <Field label="Location" value={edu.location}
+                      onChange={v => setEdu(i, 'location', v)} placeholder="City, Country" />
+                    <Field label="Degree / Program" value={edu.degree}
+                      onChange={v => setEdu(i, 'degree', v)}
+                      placeholder="Bachelor of Science - Computer Science" fullWidth />
+                    <Field label="GPA" value={edu.gpa}
+                      onChange={v => setEdu(i, 'gpa', v)} placeholder="3.8" />
+                    <Field label="Years" value={edu.years}
+                      onChange={v => setEdu(i, 'years', v)} placeholder="Aug 2018 - May 2022" />
+                    <Field label="Courses" value={edu.coursework}
+                      onChange={v => setEdu(i, 'coursework', v)}
+                      placeholder="Data Structures, Algorithms, Operating Systems…" fullWidth />
+                  </div>
+                </div>
+              ))}
+            </div>
+            <AddButton onClick={addEdu} label="Add Degree" />
           </section>
 
           {/* HONORS & AWARDS */}

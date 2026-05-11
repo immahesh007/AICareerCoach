@@ -132,32 +132,6 @@ export default function ResumePreview({ data }: { data: ResumeData }) {
         </>
       )}
 
-      {/* ── EDUCATION ──────────────────────────────────────────────────────── */}
-      {any(education) && (
-        <>
-          <SectionHeader title="Education" />
-          {education.map((edu, i) => (
-            <BulletRow key={i}>
-              <div style={S.twoCol}>
-                <span style={{ fontWeight: 'bold' }}>{edu.institution}</span>
-                <span style={{ whiteSpace: 'nowrap' as const }}>{edu.location}</span>
-              </div>
-              <div style={S.twoCol}>
-                <span style={{ fontStyle: 'italic' }}>
-                  {edu.degree}{edu.gpa ? `; GPA: ${edu.gpa}` : ''}
-                </span>
-                <span style={{ fontStyle: 'italic', whiteSpace: 'nowrap' as const }}>{edu.years}</span>
-              </div>
-              {edu.coursework && (
-                <div style={{ fontStyle: 'italic', marginTop: '1px' }}>
-                  <span style={{ fontStyle: 'italic' }}>Courses:</span> {edu.coursework}
-                </div>
-              )}
-            </BulletRow>
-          ))}
-        </>
-      )}
-
       {/* ── SKILLS SUMMARY ─────────────────────────────────────────────────── */}
       {any(skillCategories) && skillCategories.some(s => s.items.trim()) && (
         <>
@@ -237,6 +211,32 @@ export default function ResumePreview({ data }: { data: ResumeData }) {
                 {pub.tech && ` Tech: ${pub.tech}`}
                 {pub.date && ` (${pub.date})`}
               </span>
+            </BulletRow>
+          ))}
+        </>
+      )}
+
+      {/* ── EDUCATION ──────────────────────────────────────────────────────── */}
+      {any(education) && (
+        <>
+          <SectionHeader title="Education" />
+          {education.map((edu, i) => (
+            <BulletRow key={i}>
+              <div style={S.twoCol}>
+                <span style={{ fontWeight: 'bold' }}>{edu.institution}</span>
+                <span style={{ whiteSpace: 'nowrap' as const }}>{edu.location}</span>
+              </div>
+              <div style={S.twoCol}>
+                <span style={{ fontStyle: 'italic' }}>
+                  {edu.degree}{edu.gpa ? `; GPA: ${edu.gpa}` : ''}
+                </span>
+                <span style={{ fontStyle: 'italic', whiteSpace: 'nowrap' as const }}>{edu.years}</span>
+              </div>
+              {edu.coursework && (
+                <div style={{ fontStyle: 'italic', marginTop: '1px' }}>
+                  <span style={{ fontStyle: 'italic' }}>Courses:</span> {edu.coursework}
+                </div>
+              )}
             </BulletRow>
           ))}
         </>
