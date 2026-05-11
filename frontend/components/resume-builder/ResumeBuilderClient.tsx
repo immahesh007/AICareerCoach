@@ -376,24 +376,22 @@ export default function ResumeBuilderClient() {
   const removeVol = (i: number) =>
     setData(d => ({ ...d, volunteer: d.volunteer.filter((_, idx) => idx !== i) }));
 
-  // ── print ─────────────────────────────────────────────────────────────────
+  // ── print / save PDF (same-page print → no about:blank tab) ──────────────
+  // We trigger window.print() on this page. globals.css has the @media print
+  // rules that hide everything except #resume-preview and remove browser
+  // headers/footers via @page margin:0. The browser's "Save as PDF"
+  // destination then produces a clean A4 PDF that matches the live preview.
   const handlePrint = useCallback(() => {
-    const el = document.getElementById('resume-preview');
-    if (!el) return;
-    const w = window.open('', '_blank');
-    if (!w) return;
-    w.document.write(`<!DOCTYPE html><html><head>
-      <title>${data.basics.name || 'Resume'}</title>
-      <meta charset="utf-8">
-      <style>
-        *{box-sizing:border-box;margin:0;padding:0;}
-        body{font-family:'TeX Gyre Heros','Helvetica Neue',Helvetica,Arial,sans-serif;}
-        @page{margin:0;size:letter;}
-      </style>
-    </head><body>${el.outerHTML}</body></html>`);
-    w.document.close();
-    w.focus();
-    setTimeout(() => w.print(), 300);
+    const previousTitle = document.title;
+    // The print header (if the user has it enabled) reads document.title, so
+    // pick a clean filename-style title and restore the old one after.
+    document.title = (data.basics.name || 'Resume').trim();
+    const restore = () => {
+      document.title = previousTitle;
+      window.removeEventListener('afterprint', restore);
+    };
+    window.addEventListener('afterprint', restore);
+    window.print();
   }, [data.basics.name]);
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -797,7 +795,7 @@ export default function ResumeBuilderClient() {
           )}
 
           <div className="flex-1 overflow-auto rounded-xl bg-gray-200/10 p-4">
-            <div className="bg-white shadow-xl rounded">
+            <div className="w-fit mx-auto">
               <ResumePreview data={data} />
             </div>
           </div>
