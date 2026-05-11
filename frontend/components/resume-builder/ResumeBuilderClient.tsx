@@ -92,6 +92,7 @@ const DEFAULT_SKILLS: SkillCategory[] = [
   { category: 'Frameworks', items: '' },
   { category: 'Tools', items: '' },
   { category: 'Platforms', items: '' },
+  { category: 'Concepts', items: '' },
   { category: 'Soft Skills', items: '' },
 ];
 
@@ -479,6 +480,7 @@ export default function ResumeBuilderClient() {
                       i === 1 ? 'e.g. React, Node.js, Django, Spring Boot' :
                       i === 2 ? 'e.g. Git, Docker, Kubernetes, PostgreSQL' :
                       i === 3 ? 'e.g. Linux, AWS, GCP, Azure' :
+                      i === 4 ? 'e.g. OOP, Design Patterns, RESTful APIs, Distributed Systems' :
                                'e.g. Leadership, Communication, Time Management'
                     }
                   />
