@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import ResumePreview from './ResumePreview';
+import SaveResumeModal from './SaveResumeModal';
+import { useRouter } from 'next/navigation';
 import { getParsedResume, reparseResume } from '@/services/dashboardService';
 import { parsedToBuilder } from '@/utils/parsedToBuilder';
 import {
@@ -175,7 +177,10 @@ function AddButton({ onClick, label }: { onClick: () => void; label: string }) {
 // ─── main component ───────────────────────────────────────────────────────────
 
 export default function ResumeBuilderClient() {
+  const router = useRouter();
   const [data, setData] = useState<ResumeData>(INITIAL);
+  const [saveOpen, setSaveOpen] = useState(false);
+  const [savedToast, setSavedToast] = useState<string | null>(null);
   const searchParams = useSearchParams();
   const resumeIdParam = searchParams?.get('resume_id') ?? null;
   const [prefillState, setPrefillState] = useState<'idle' | 'loading' | 'success' | 'error'>(
@@ -711,19 +716,43 @@ export default function ResumeBuilderClient() {
 
         {/* ── RIGHT: live preview ────────────────────────────────────────── */}
         <div className="w-1/2 flex flex-col px-6 py-8">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
             <h2 className="text-lg font-bold text-white">Live Preview</h2>
-            <button
-              onClick={handlePrint}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition-colors"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                  d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-              </svg>
-              Print / Save PDF
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setSaveOpen(true)}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M5 13l4 4L19 7" />
+                </svg>
+                Save Resume
+              </button>
+              <button
+                onClick={handlePrint}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                </svg>
+                Print / Save PDF
+              </button>
+            </div>
           </div>
+
+          {savedToast && (
+            <div className="mb-3 flex items-center justify-between gap-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200">
+              <span>Saved! You can find it on the Saved Resumes dashboard.</span>
+              <button
+                onClick={() => router.push('/saved-resumes')}
+                className="px-2.5 py-1 rounded-full bg-emerald-600/80 hover:bg-emerald-500 text-white text-[11px] font-semibold transition-colors"
+              >
+                View saved resumes →
+              </button>
+            </div>
+          )}
 
           <div className="flex-1 overflow-auto rounded-xl bg-gray-200/10 p-4">
             <div className="bg-white shadow-xl rounded">
@@ -732,6 +761,17 @@ export default function ResumeBuilderClient() {
           </div>
         </div>
       </div>
+
+      <SaveResumeModal
+        isOpen={saveOpen}
+        data={data}
+        onClose={() => setSaveOpen(false)}
+        onSaved={() => {
+          setSaveOpen(false);
+          setSavedToast('saved');
+          window.setTimeout(() => setSavedToast(null), 8000);
+        }}
+      />
     </div>
   );
 }

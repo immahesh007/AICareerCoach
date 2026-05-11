@@ -11,12 +11,10 @@ router = APIRouter()
 
 class BasicsModel(BaseModel):
     name: str = ""
-    address: str = ""
+    portfolio: str = ""
+    github: str = ""
     email: str = ""
     phone: str = ""
-    website: str = ""
-    github: str = ""
-    linkedin: str = ""
 
 
 class EducationItem(BaseModel):
@@ -26,7 +24,6 @@ class EducationItem(BaseModel):
     gpa: str = ""
     years: str = ""
     coursework: str = ""
-    activities: str = ""
 
 
 class ExperienceItem(BaseModel):
@@ -37,10 +34,26 @@ class ExperienceItem(BaseModel):
     bullets: list[str] = []
 
 
-class SkillLevel(BaseModel):
-    emoji: str = ""
-    level: str = ""
+class SkillCategoryItem(BaseModel):
+    category: str = ""
     items: str = ""
+
+
+class ProjectItem(BaseModel):
+    name: str = ""
+    tags: str = ""
+    description: str = ""
+    tech: str = ""
+    date: str = ""
+
+
+class PublicationItem(BaseModel):
+    prefix: str = ""
+    title: str = ""
+    tags: str = ""
+    description: str = ""
+    tech: str = ""
+    date: str = ""
 
 
 class Award(BaseModel):
@@ -48,13 +61,23 @@ class Award(BaseModel):
     date: str = ""
 
 
+class VolunteerItem(BaseModel):
+    org: str = ""
+    location: str = ""
+    description: str = ""
+    duration: str = ""
+
+
 class ResumeGenerateRequest(BaseModel):
     basics: BasicsModel = BasicsModel()
     summary: str = ""
     education: list[EducationItem] = []
+    skillCategories: list[SkillCategoryItem] = []
     experience: list[ExperienceItem] = []
-    skills: list[SkillLevel] = []
+    projects: list[ProjectItem] = []
+    publications: list[PublicationItem] = []
     awards: list[Award] = []
+    volunteer: list[VolunteerItem] = []
 
 
 @router.post("/resume-builder/generate")

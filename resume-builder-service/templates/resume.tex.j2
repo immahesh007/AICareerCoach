@@ -28,8 +28,6 @@
 \setlength{\parskip}{0pt}
 
 %% ─── Section header command ─────────────────────────────────────────────────
-%%     \ressection{emoji}{Title}
-%%     Matches the template: bold large text + immediate thin rule below
 \newcommand{\ressection}[2]{%
   \vspace{7pt}%
   \noindent{\large\bfseries \ei{#1}~#2}%
@@ -39,7 +37,6 @@
 }
 
 %% ─── Entry header (left bold + right text, same line) ───────────────────────
-%%     \entryrow{Left bold text}{Right text}
 \newcommand{\entryrow}[2]{%
   \noindent\textbf{#1}\hfill #2%
 }
@@ -57,13 +54,11 @@
 %% ═══════════════════════════════════════════════════════════════════════════
 \begin{center}
   {\LARGE\bfseries << basics.name | e >>}\\[4pt]
-  {\small \ei{🏠}~<< basics.address | e >>}\\[2pt]
   {\small
-    \ei{📬}~\href{mailto:<< basics.email >>}{<< basics.email | e >>}%
-    \enspace\ei{☎️}~<< basics.phone | e >>%
-    \enspace\ei{🖥️}~\href{<< basics.website >>}{<< basics.website | e >>}%
-    \enspace\ei{🔗}~GitHub:~<< basics.github | e >>%
-    \enspace\ei{🔗}~LinkedIn:~<< basics.linkedin | e >>%
+    <% if basics.email %>\ei{📬}~\href{mailto:<< basics.email >>}{<< basics.email | e >>}<% endif %>%
+    <% if basics.phone %>\enspace\ei{☎️}~<< basics.phone | e >><% endif %>%
+    <% if basics.portfolio %>\enspace\ei{🖥️}~\href{<< basics.portfolio >>}{<< basics.portfolio | e >>}<% endif %>%
+    <% if basics.github %>\enspace\ei{🔗}~GitHub:~<< basics.github | e >><% endif %>%
   }
 \end{center}
 \vspace{3pt}
@@ -77,48 +72,11 @@
 <% endif %>
 
 %% ═══════════════════════════════════════════════════════════════════════════
-%%  EDUCATION
-%% ═══════════════════════════════════════════════════════════════════════════
-\ressection{📚}{Education}
-<% for edu in education %>
-\entryrow{<< edu.institution | e >>}{<< edu.location | e >>}\\[-3pt]
-\noindent\textit{<< edu.degree | e >>}<% if edu.gpa %> << edu.gpa | e >><% endif %>\hfill << edu.years | e >>\\[2pt]
-<% if edu.coursework %>
-\noindent\textbf{Coursework:} << edu.coursework | e >>\\[-1pt]
-<% endif %>
-<% if edu.activities %>
-\noindent\textbf{Activities:} << edu.activities | e >>%
-<% endif %>
-<% if not loop.last %>
-\par\vspace{4pt}
-<% endif %>
-<% endfor %>
-
-%% ═══════════════════════════════════════════════════════════════════════════
-%%  EXPERIENCE
-%% ═══════════════════════════════════════════════════════════════════════════
-\ressection{💼}{Experience}
-<% for exp in experience %>
-\entryrow{<< exp.company | e >>}{<< exp.location | e >>}\\[-4pt]
-\subrow{<< exp.title | e >>}{<< exp.duration | e >>}
-\begin{itemize}[
-  itemsep = 0pt,
-  parsep  = 0pt,
-  topsep  = 1pt,
-  partopsep = 0pt,
-  leftmargin = 1.4em,
-  label = {--}
-]
-<% for bullet in exp.bullets %>
-  \item << bullet | e >>
-<% endfor %>
-\end{itemize}
-<% endfor %>
-
-%% ═══════════════════════════════════════════════════════════════════════════
 %%  SKILLS
 %% ═══════════════════════════════════════════════════════════════════════════
-\ressection{🖐️}{Skills}
+<% set has_skills = skillCategories | selectattr('items') | list %>
+<% if has_skills %>
+\ressection{🖐️}{Skills Summary}
 \begin{itemize}[
   itemsep = 1pt,
   parsep  = 0pt,
@@ -127,17 +85,138 @@
   leftmargin = 0pt,
   label = {}
 ]
-<% for skill in skills %>
-  \item \ei{<< skill.emoji >>}~\textbf{<< skill.level | e >>:} << skill['items'] | e >>
+<% for skill in skillCategories %>
+<% if skill['items'] %>
+  \item \textbf{<< skill.category | e >>:} << skill['items'] | e >>
+<% endif %>
 <% endfor %>
 \end{itemize}
+<% endif %>
 
 %% ═══════════════════════════════════════════════════════════════════════════
-%%  AWARDS
+%%  EXPERIENCE
 %% ═══════════════════════════════════════════════════════════════════════════
-\ressection{🏆}{Awards}
-<% for award in awards %>
-\noindent << award.name | e >>\hfill << award.date | e >>\\
+<% set has_experience = experience | selectattr('company') | list %>
+<% if has_experience %>
+\ressection{💼}{Experience}
+<% for exp in experience %>
+<% if exp.company or exp.title %>
+\entryrow{<< exp.company | e >>}{<< exp.location | e >>}\\[-4pt]
+\subrow{<< exp.title | e >>}{<< exp.duration | e >>}
+<% set valid_bullets = exp.bullets | select | list %>
+<% if valid_bullets %>
+\begin{itemize}[
+  itemsep = 0pt,
+  parsep  = 0pt,
+  topsep  = 1pt,
+  partopsep = 0pt,
+  leftmargin = 1.4em,
+  label = {--}
+]
+<% for bullet in valid_bullets %>
+  \item << bullet | e >>
 <% endfor %>
+\end{itemize}
+<% endif %>
+<% if not loop.last %>
+\par\vspace{4pt}
+<% endif %>
+<% endif %>
+<% endfor %>
+<% endif %>
+
+%% ═══════════════════════════════════════════════════════════════════════════
+%%  PROJECTS
+%% ═══════════════════════════════════════════════════════════════════════════
+<% set has_projects = projects | selectattr('name') | list %>
+<% if has_projects %>
+\ressection{🛠️}{Projects}
+\begin{itemize}[
+  itemsep = 2pt,
+  parsep  = 0pt,
+  topsep  = 0pt,
+  partopsep = 0pt,
+  leftmargin = 1.2em,
+  label = {\textbullet}
+]
+<% for proj in projects %>
+<% if proj.name %>
+  \item \textbf{<< proj.name | e >>}<% if proj.tags %> (<< proj.tags | e >>)<% endif %><% if proj.description %>: << proj.description | e >><% endif %><% if proj.tech %>\quad\textit{Tech:} << proj.tech | e >><% endif %><% if proj.date %>\quad(<< proj.date | e >>)<% endif %>
+<% endif %>
+<% endfor %>
+\end{itemize}
+<% endif %>
+
+%% ═══════════════════════════════════════════════════════════════════════════
+%%  PUBLICATIONS
+%% ═══════════════════════════════════════════════════════════════════════════
+<% set has_publications = publications | selectattr('title') | list %>
+<% if has_publications %>
+\ressection{📖}{Publications}
+\begin{itemize}[
+  itemsep = 2pt,
+  parsep  = 0pt,
+  topsep  = 0pt,
+  partopsep = 0pt,
+  leftmargin = 1.2em,
+  label = {\textbullet}
+]
+<% for pub in publications %>
+<% if pub.title %>
+  \item <% if pub.prefix %>\textbf{<< pub.prefix | e >>:} <% endif %>\textbf{<< pub.title | e >>}<% if pub.tags %> (<< pub.tags | e >>)<% endif %><% if pub.description %>: << pub.description | e >><% endif %><% if pub.tech %>\quad\textit{Tech:} << pub.tech | e >><% endif %><% if pub.date %>\quad(<< pub.date | e >>)<% endif %>
+<% endif %>
+<% endfor %>
+\end{itemize}
+<% endif %>
+
+%% ═══════════════════════════════════════════════════════════════════════════
+%%  EDUCATION
+%% ═══════════════════════════════════════════════════════════════════════════
+<% set has_education = education | selectattr('institution') | list %>
+<% if has_education %>
+\ressection{📚}{Education}
+<% for edu in education %>
+<% if edu.institution %>
+\entryrow{<< edu.institution | e >>}{<< edu.location | e >>}\\[-3pt]
+\noindent\textit{<< edu.degree | e >>}<% if edu.gpa %>; GPA: << edu.gpa | e >><% endif %>\hfill << edu.years | e >>\\[2pt]
+<% if edu.coursework %>
+\noindent\textit{Courses:} << edu.coursework | e >>%
+<% endif %>
+<% if not loop.last %>
+\par\vspace{4pt}
+<% endif %>
+<% endif %>
+<% endfor %>
+<% endif %>
+
+%% ═══════════════════════════════════════════════════════════════════════════
+%%  HONORS & AWARDS
+%% ═══════════════════════════════════════════════════════════════════════════
+<% set has_awards = awards | selectattr('name') | list %>
+<% if has_awards %>
+\ressection{🏆}{Honors \& Awards}
+<% for award in awards %>
+<% if award.name %>
+\noindent << award.name | e >>\hfill << award.date | e >>\\
+<% endif %>
+<% endfor %>
+<% endif %>
+
+%% ═══════════════════════════════════════════════════════════════════════════
+%%  VOLUNTEER EXPERIENCE
+%% ═══════════════════════════════════════════════════════════════════════════
+<% set has_volunteer = volunteer | selectattr('org') | list %>
+<% if has_volunteer %>
+\ressection{🤝}{Volunteer Experience}
+<% for vol in volunteer %>
+<% if vol.org %>
+\entryrow{<< vol.org | e >>}{<< vol.location | e >>}\\[-3pt]
+\subrow{<< vol.description | e >>}{<< vol.duration | e >>}
+<% if not loop.last %>
+\par\vspace{4pt}
+<% endif %>
+<% endif %>
+<% endfor %>
+<% endif %>
 
 \end{document}
