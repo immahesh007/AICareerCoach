@@ -104,6 +104,19 @@ class ResumeSuggestion(Base):
     )
 
 
+class SavedResume(Base):
+    __tablename__ = "saved_resumes"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(Text, nullable=False)
+    name = Column(Text, nullable=False)
+    company = Column(Text, nullable=True)
+    resume_data = Column(JSONB, nullable=False)
+    saved_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+
+    __table_args__ = (Index("ix_saved_resumes_user_saved_at", "user_id", "saved_at"),)
+
+
 class User(Base):
     __tablename__ = "users"
 
