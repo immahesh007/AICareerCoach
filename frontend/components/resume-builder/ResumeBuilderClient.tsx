@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import Navbar from '@/components/Navbar';
@@ -192,6 +192,39 @@ export default function ResumeBuilderClient() {
   const [reparsing, setReparsing] = useState(false);
   const [appliedSuggestions, setAppliedSuggestions] = useState(0);
   const [editingName, setEditingName] = useState<string | null>(null);
+
+  // ── adjustable split ──────────────────────────────────────────────────────
+  const [leftWidth, setLeftWidth] = useState(40); // default 40:60
+  const splitRef = useRef<HTMLDivElement>(null);
+  const dragging = useRef(false);
+
+  const onSplitMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    dragging.current = true;
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+  }, []);
+
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      if (!dragging.current || !splitRef.current?.parentElement) return;
+      const rect = splitRef.current.parentElement.getBoundingClientRect();
+      const pct = ((e.clientX - rect.left) / rect.width) * 100;
+      setLeftWidth(Math.min(Math.max(pct, 25), 65));
+    };
+    const onUp = () => {
+      if (!dragging.current) return;
+      dragging.current = false;
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+  }, []);
 
   // Load from a saved resume (Edit flow) — takes precedence over resume_id.
   useEffect(() => {
@@ -405,7 +438,7 @@ export default function ResumeBuilderClient() {
       <div className="relative z-10 flex h-[calc(100vh-64px)] mt-16">
 
         {/* ── LEFT: editor ──────────────────────────────────────────────── */}
-        <div className="w-1/2 overflow-y-auto border-r border-white/10 px-8 py-8">
+        <div className="overflow-y-auto border-r border-white/10 px-8 py-8" style={{ width: `${leftWidth}%` }}>
           <Link
             href={
               savedResumeIdParam
@@ -754,8 +787,15 @@ export default function ResumeBuilderClient() {
           </section>
         </div>
 
+        {/* ── draggable splitter ─────────────────────────────────────────── */}
+        <div
+          ref={splitRef}
+          onMouseDown={onSplitMouseDown}
+          className="w-1.5 cursor-col-resize bg-white/10 hover:bg-indigo-500/60 active:bg-indigo-400 transition-colors shrink-0"
+        />
+
         {/* ── RIGHT: live preview ────────────────────────────────────────── */}
-        <div className="w-1/2 flex flex-col px-6 py-8">
+        <div className="flex flex-col px-6 py-8" style={{ width: `${100 - leftWidth}%` }}>
           <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
             <h2 className="text-lg font-bold text-white">Live Preview</h2>
             <div className="flex items-center gap-2">
