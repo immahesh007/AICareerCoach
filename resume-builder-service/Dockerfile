@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     texlive-fonts-recommended \
     fonts-cmu \
     fonts-noto-color-emoji \
+    fonts-roboto \
     fontconfig \
     && fc-cache -f \
     && rm -rf /var/lib/apt/lists/*

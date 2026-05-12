@@ -17,14 +17,21 @@ import {
 import type {
   Award,
   Basics,
+  BulletStyle,
   EducationItem,
   ExperienceItem,
+  FontFamily,
+  FontSize,
+  MarginSize,
   ProjectItem,
   PublicationItem,
   ResumeData,
+  ResumeDesignSettings,
   SkillCategory,
+  SpacingMode,
   VolunteerItem,
 } from '@/types/resume';
+import { DEFAULT_DESIGN_SETTINGS, FONT_FAMILY_MAP } from '@/types/resume';
 
 function readHandoff(resumeId: string): ApprovedSuggestionsHandoff | null {
   if (typeof window === 'undefined') return null;
@@ -80,7 +87,7 @@ function applyHandoff(base: ResumeData, h: ApprovedSuggestionsHandoff): ResumeDa
 
 // ─── defaults ─────────────────────────────────────────────────────────────────
 
-const EMPTY_BASICS: Basics = { name: '', portfolio: '', github: '', email: '', phone: '' };
+const EMPTY_BASICS: Basics = { name: '', portfolio: '', github: '', linkedin: '', email: '', phone: '' };
 
 const EMPTY_EDU: EducationItem = {
   institution: '', location: '', degree: '', gpa: '', years: '', coursework: '',
@@ -126,14 +133,36 @@ const INITIAL: ResumeData = {
 const inputCls =
   'w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-indigo-400 transition';
 const labelCls = 'block text-xs font-medium text-indigo-300 mb-1';
-const sectionTitleCls =
-  'text-xs font-semibold text-white/50 uppercase tracking-widest mb-4 border-b border-white/10 pb-2';
 const cardCls = 'rounded-xl border border-white/10 bg-white/5 p-4';
 const removeBtnCls = 'text-red-400 hover:text-red-300 text-xs transition-colors';
 const addBtnCls =
   'mt-3 inline-flex items-center gap-1.5 text-xs text-indigo-300 hover:text-indigo-100 transition-colors';
 
 // ─── sub-components ───────────────────────────────────────────────────────────
+
+function CollapsibleSection({
+  title, open, onToggle, children,
+}: {
+  title: string; open: boolean; onToggle: () => void; children: React.ReactNode;
+}) {
+  return (
+    <section className="mb-6">
+      <button
+        onClick={onToggle}
+        className="w-full flex items-center justify-between text-xs font-semibold text-white/50 uppercase tracking-widest border-b border-white/10 pb-2 hover:text-white/70 transition-colors"
+      >
+        <span>{title}</span>
+        <svg
+          className={`w-3.5 h-3.5 transition-transform ${open ? 'rotate-180' : ''}`}
+          fill="none" viewBox="0 0 24 24" stroke="currentColor"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      {open && <div className="mt-3">{children}</div>}
+    </section>
+  );
+}
 
 function Field({
   label, value, onChange, placeholder, fullWidth, textarea, rows,
@@ -192,6 +221,20 @@ export default function ResumeBuilderClient() {
   const [reparsing, setReparsing] = useState(false);
   const [appliedSuggestions, setAppliedSuggestions] = useState(0);
   const [editingName, setEditingName] = useState<string | null>(null);
+  const [design, setDesign] = useState<ResumeDesignSettings>(DEFAULT_DESIGN_SETTINGS);
+  const [sections, setSections] = useState<Record<string, boolean>>({
+    design: false,
+    basics: true,
+    summary: true,
+    skills: true,
+    experience: true,
+    projects: true,
+    publications: true,
+    education: true,
+    awards: true,
+    volunteer: true,
+  });
+  const toggleSection = (key: string) => setSections(prev => ({ ...prev, [key]: !prev[key] }));
 
   // ── adjustable split ──────────────────────────────────────────────────────
   const [leftWidth, setLeftWidth] = useState(40); // default 40:60
@@ -511,9 +554,114 @@ export default function ResumeBuilderClient() {
             </div>
           )}
 
+          {/* DESIGN SETTINGS */}
+          <CollapsibleSection title="Design Settings" open={sections.design} onToggle={() => toggleSection('design')}>
+            <div className={cardCls}>
+              {/* Font Size */}
+              <div className="mb-4">
+                <label className={labelCls}>Font Size</label>
+                <div className="flex gap-1.5">
+                  {(['small', 'normal', 'large'] as FontSize[]).map(size => (
+                    <button
+                      key={size}
+                      onClick={() => setDesign(d => ({ ...d, fontSize: size }))}
+                      className={`flex-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
+                        ${design.fontSize === size
+                          ? 'bg-indigo-600 text-white'
+                          : 'bg-white/5 text-white/60 hover:text-white hover:bg-white/10 border border-white/10'
+                        }`}
+                    >
+                      {size === 'small' ? 'Small' : size === 'normal' ? 'Normal' : 'Large'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Margins */}
+              <div className="mb-4">
+                <label className={labelCls}>Margins</label>
+                <div className="flex gap-1.5">
+                  {(['normal', 'tight', 'none'] as MarginSize[]).map(size => (
+                    <button
+                      key={size}
+                      onClick={() => setDesign(d => ({ ...d, marginSize: size }))}
+                      className={`flex-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
+                        ${design.marginSize === size
+                          ? 'bg-indigo-600 text-white'
+                          : 'bg-white/5 text-white/60 hover:text-white hover:bg-white/10 border border-white/10'
+                        }`}
+                    >
+                      {size === 'normal' ? 'Normal' : size === 'tight' ? 'Tight' : 'Edge to Edge'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Font Family */}
+              <div className="mb-4">
+                <label className={labelCls}>Font Family</label>
+                <div className="flex gap-1.5">
+                  {(['texgyre', 'latinmodern', 'roboto', 'times'] as FontFamily[]).map(font => (
+                    <button
+                      key={font}
+                      onClick={() => setDesign(d => ({ ...d, fontFamily: font }))}
+                      className={`flex-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
+                        ${design.fontFamily === font
+                          ? 'bg-indigo-600 text-white'
+                          : 'bg-white/5 text-white/60 hover:text-white hover:bg-white/10 border border-white/10'
+                        }`}
+                      style={{ fontFamily: FONT_FAMILY_MAP[font].css }}
+                    >
+                      {font === 'texgyre' ? 'Heiros' : font === 'latinmodern' ? 'Modern' : font === 'roboto' ? 'Roboto' : 'Times'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Bullet Style */}
+              <div className="mb-4">
+                <label className={labelCls}>Bullet Style</label>
+                <div className="flex gap-1.5">
+                  {(['dash', 'dot', 'arrow', 'diamond'] as BulletStyle[]).map(style => (
+                    <button
+                      key={style}
+                      onClick={() => setDesign(d => ({ ...d, bulletStyle: style }))}
+                      className={`flex-1 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
+                        ${design.bulletStyle === style
+                          ? 'bg-indigo-600 text-white'
+                          : 'bg-white/5 text-white/60 hover:text-white hover:bg-white/10 border border-white/10'
+                        }`}
+                    >
+                      {style === 'dash' ? '–' : style === 'dot' ? '•' : style === 'arrow' ? '→' : '◆'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Spacing */}
+              <div>
+                <label className={labelCls}>Spacing</label>
+                <div className="flex gap-1.5">
+                  {(['normal', 'compact'] as SpacingMode[]).map(mode => (
+                    <button
+                      key={mode}
+                      onClick={() => setDesign(d => ({ ...d, spacing: mode }))}
+                      className={`flex-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
+                        ${design.spacing === mode
+                          ? 'bg-indigo-600 text-white'
+                          : 'bg-white/5 text-white/60 hover:text-white hover:bg-white/10 border border-white/10'
+                        }`}
+                    >
+                      {mode === 'normal' ? 'Normal' : 'Compact'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </CollapsibleSection>
+
           {/* BASICS */}
-          <section className="mb-8">
-            <p className={sectionTitleCls}>Basics</p>
+          <CollapsibleSection title="Basics" open={sections.basics} onToggle={() => toggleSection('basics')}>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Full Name" value={data.basics.name}
                 onChange={v => setBasics('name', v)} placeholder="Your Full Name" fullWidth />
@@ -525,12 +673,13 @@ export default function ResumeBuilderClient() {
                 onChange={v => setBasics('email', v)} placeholder="you@email.com" />
               <Field label="Phone / Mobile" value={data.basics.phone}
                 onChange={v => setBasics('phone', v)} placeholder="+1-XXX-XXX-XXXX" />
+              <Field label="LinkedIn URL" value={data.basics.linkedin}
+                onChange={v => setBasics('linkedin', v)} placeholder="linkedin.com/in/yourprofile" />
             </div>
-          </section>
+          </CollapsibleSection>
 
           {/* SUMMARY */}
-          <section className="mb-8">
-            <p className={sectionTitleCls}>Summary</p>
+          <CollapsibleSection title="Summary" open={sections.summary} onToggle={() => toggleSection('summary')}>
             <textarea
               className={`${inputCls} resize-none`}
               rows={3}
@@ -538,11 +687,10 @@ export default function ResumeBuilderClient() {
               onChange={e => setData(d => ({ ...d, summary: e.target.value }))}
               placeholder="2 to 4 sentences describing your experience and what you bring to the role…"
             />
-          </section>
+          </CollapsibleSection>
 
           {/* SKILLS SUMMARY */}
-          <section className="mb-8">
-            <p className={sectionTitleCls}>Skills Summary</p>
+          <CollapsibleSection title="Skills Summary" open={sections.skills} onToggle={() => toggleSection('skills')}>
             <div className="space-y-3">
               {data.skillCategories.map((skill, i) => (
                 <div key={i} className="flex items-center gap-3">
@@ -565,11 +713,10 @@ export default function ResumeBuilderClient() {
                 </div>
               ))}
             </div>
-          </section>
+          </CollapsibleSection>
 
           {/* EXPERIENCE */}
-          <section className="mb-8">
-            <p className={sectionTitleCls}>Experience</p>
+          <CollapsibleSection title="Experience" open={sections.experience} onToggle={() => toggleSection('experience')}>
             <div className="space-y-4">
               {data.experience.map((exp, i) => (
                 <div key={i} className={cardCls}>
@@ -616,11 +763,10 @@ export default function ResumeBuilderClient() {
               ))}
             </div>
             <AddButton onClick={addExp} label="Add Position" />
-          </section>
+          </CollapsibleSection>
 
           {/* PROJECTS */}
-          <section className="mb-8">
-            <p className={sectionTitleCls}>Projects</p>
+          <CollapsibleSection title="Projects" open={sections.projects} onToggle={() => toggleSection('projects')}>
             <div className="space-y-4">
               {data.projects.map((proj, i) => (
                 <div key={i} className={cardCls}>
@@ -651,11 +797,10 @@ export default function ResumeBuilderClient() {
               ))}
             </div>
             <AddButton onClick={addProject} label="Add Project" />
-          </section>
+          </CollapsibleSection>
 
           {/* PUBLICATIONS */}
-          <section className="mb-8">
-            <p className={sectionTitleCls}>Publications</p>
+          <CollapsibleSection title="Publications" open={sections.publications} onToggle={() => toggleSection('publications')}>
             <div className="space-y-4">
               {data.publications.map((pub, i) => (
                 <div key={i} className={cardCls}>
@@ -688,11 +833,10 @@ export default function ResumeBuilderClient() {
               ))}
             </div>
             <AddButton onClick={addPub} label="Add Publication" />
-          </section>
+          </CollapsibleSection>
 
           {/* EDUCATION */}
-          <section className="mb-8">
-            <p className={sectionTitleCls}>Education</p>
+          <CollapsibleSection title="Education" open={sections.education} onToggle={() => toggleSection('education')}>
             <div className="space-y-4">
               {data.education.map((edu, i) => (
                 <div key={i} className={cardCls}>
@@ -723,11 +867,10 @@ export default function ResumeBuilderClient() {
               ))}
             </div>
             <AddButton onClick={addEdu} label="Add Degree" />
-          </section>
+          </CollapsibleSection>
 
           {/* HONORS & AWARDS */}
-          <section className="mb-8">
-            <p className={sectionTitleCls}>Honors & Awards</p>
+          <CollapsibleSection title="Honors & Awards" open={sections.awards} onToggle={() => toggleSection('awards')}>
             <div className="space-y-2">
               {data.awards.map((award, i) => (
                 <div key={i} className="flex gap-2 items-end">
@@ -753,11 +896,10 @@ export default function ResumeBuilderClient() {
               ))}
             </div>
             <AddButton onClick={addAward} label="Add Award" />
-          </section>
+          </CollapsibleSection>
 
           {/* VOLUNTEER EXPERIENCE */}
-          <section className="mb-8">
-            <p className={sectionTitleCls}>Volunteer Experience</p>
+          <CollapsibleSection title="Volunteer Experience" open={sections.volunteer} onToggle={() => toggleSection('volunteer')}>
             <div className="space-y-4">
               {data.volunteer.map((vol, i) => (
                 <div key={i} className={cardCls}>
@@ -784,7 +926,7 @@ export default function ResumeBuilderClient() {
               ))}
             </div>
             <AddButton onClick={addVol} label="Add Role" />
-          </section>
+          </CollapsibleSection>
         </div>
 
         {/* ── draggable splitter ─────────────────────────────────────────── */}
@@ -836,7 +978,7 @@ export default function ResumeBuilderClient() {
 
           <div className="flex-1 overflow-auto rounded-xl bg-gray-200/10 p-4">
             <div className="w-fit mx-auto">
-              <ResumePreview data={data} />
+              <ResumePreview data={data} design={design} />
             </div>
           </div>
         </div>

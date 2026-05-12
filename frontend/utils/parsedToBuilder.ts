@@ -45,7 +45,7 @@ interface ParsedResumeData {
   projects?: ParsedProject[];
 }
 
-const EMPTY_BASICS: Basics = { name: '', portfolio: '', github: '', email: '', phone: '' };
+const EMPTY_BASICS: Basics = { name: '', portfolio: '', github: '', linkedin: '', email: '', phone: '' };
 const EMPTY_EDU: EducationItem = {
   institution: '', location: '', degree: '', gpa: '', years: '', coursework: '',
 };
@@ -67,11 +67,6 @@ const DEFAULT_SKILL_CATS: SkillCategory[] = [
   { category: 'Concepts', items: '' },
   { category: 'Soft Skills', items: '' },
 ];
-
-function isLinkedinUrl(s: string | undefined): boolean {
-  if (!s) return false;
-  return /linkedin\.com/i.test(s);
-}
 
 // LLM may emit description as one paragraph or pre-split bullets joined by newlines / bullet glyphs.
 // When neither is present, fall back to sentence-boundary splitting so prose still becomes multiple bullets.
@@ -125,7 +120,8 @@ function mapBasics(p: ParsedResumeData): Basics {
     name: p.name ?? '',
     email: p.email ?? '',
     phone: p.phone ?? '',
-    portfolio: isLinkedinUrl(p.linkedin) ? (p.linkedin as string) : '',
+    linkedin: p.linkedin ?? '',
+    portfolio: '',
   };
 }
 

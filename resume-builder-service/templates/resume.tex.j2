@@ -1,11 +1,43 @@
-\documentclass[11pt,a4paper]{article}
+\documentclass[<< font_size | default('11pt') >>,a4paper]{article}
 
 %% ─── Page geometry ──────────────────────────────────────────────────────────
+<% set m = margin_size | default('normal') %>
+<% if m == 'tight' %>
+\usepackage[a4paper, top=0.35in, bottom=0.35in, left=0.47in, right=0.47in]{geometry}
+<% elif m == 'none' %>
+\usepackage[a4paper, top=0.15in, bottom=0.15in, left=0.24in, right=0.24in]{geometry}
+<% else %>
 \usepackage[a4paper, top=0.65in, bottom=0.65in, left=0.75in, right=0.75in]{geometry}
+<% endif %>
+
+<% set bs = bullet_style | default('dash') %>
+<% if bs == 'dot' %>
+<%   set bullet_label = '\\textbullet' %>
+<% elif bs == 'arrow' %>
+<%   set bullet_label = '$\\rightarrow$' %>
+<% elif bs == 'diamond' %>
+<%   set bullet_label = '$\\diamond$' %>
+<% else %>
+<%   set bullet_label = '--' %>
+<% endif %>
+
+<% set sp = spacing | default('normal') %>
+<% if sp == 'compact' %>
+<%   set section_vspace = '4pt' %>
+<%   set item_vspace = '0pt' %>
+<%   set topsep_val = '0pt' %>
+<%   set between_entry = '2pt' %>
+<% else %>
+<%   set section_vspace = '7pt' %>
+<%   set item_vspace = '2pt' %>
+<%   set topsep_val = '0pt' %>
+<%   set between_entry = '4pt' %>
+<% endif %>
 
 %% ─── XeLaTeX Unicode + emoji font (macOS → Apple Color Emoji, Linux/Docker → Noto) ──
 \usepackage{fontspec}
-\setmainfont{TeX Gyre Heros}
+<% set ff = font_family | default('TeX Gyre Heros') %>
+\setmainfont{<< ff >>}
 \IfFontExistsTF{Apple Color Emoji}{%
   \newfontfamily\emojifont{Apple Color Emoji}%
   \newcommand{\ei}[1]{{\emojifont #1}}%
@@ -29,7 +61,7 @@
 
 %% ─── Section header command ─────────────────────────────────────────────────
 \newcommand{\ressection}[2]{%
-  \vspace{7pt}%
+  \vspace{<< section_vspace >>}%
   \noindent{\large\bfseries \ei{#1}~#2}%
   \par\nobreak\vspace{-5pt}%
   \noindent\rule{\linewidth}{0.5pt}%
@@ -55,10 +87,11 @@
 \begin{center}
   {\LARGE\bfseries << basics.name | e >>}\\[4pt]
   {\small
-    <% if basics.email %>\ei{📬}~\href{mailto:<< basics.email >>}{<< basics.email | e >>}<% endif %>%
-    <% if basics.phone %>\enspace\ei{☎️}~<< basics.phone | e >><% endif %>%
-    <% if basics.portfolio %>\enspace\ei{🖥️}~\href{<< basics.portfolio >>}{<< basics.portfolio | e >>}<% endif %>%
-    <% if basics.github %>\enspace\ei{🔗}~GitHub:~<< basics.github | e >><% endif %>%
+    <% if basics.email %>\ei{📬}~\href{mailto:<< basics.email >>}{<< basics.email | e >>}<% endif %>
+    <% if basics.phone %>\enspace\ei{☎️}~<< basics.phone | e >><% endif %>
+    <% if basics.portfolio %>\enspace\ei{🖥️}~\href{<< basics.portfolio >>}{<< basics.portfolio | e >>}<% endif %>
+    <% if basics.github %>\enspace\ei{🔗}~GitHub:~<< basics.github | e >><% endif %>
+    <% if basics.linkedin %>\enspace\ei{💼}~\href{https://<< basics.linkedin >>}{<< basics.linkedin | e >>}<% endif %>
   }
 \end{center}
 \vspace{3pt}
@@ -78,9 +111,9 @@
 <% if has_skills %>
 \ressection{🖐️}{Skills Summary}
 \begin{itemize}[
-  itemsep = 1pt,
+  itemsep = << item_vspace >>,
   parsep  = 0pt,
-  topsep  = 0pt,
+  topsep  = << topsep_val >>,
   partopsep = 0pt,
   leftmargin = 0pt,
   label = {}
@@ -111,7 +144,7 @@
   topsep  = 1pt,
   partopsep = 0pt,
   leftmargin = 1.4em,
-  label = {--}
+  label = {<< bullet_label >>}
 ]
 <% for bullet in valid_bullets %>
   \item << bullet | e >>
@@ -119,7 +152,7 @@
 \end{itemize}
 <% endif %>
 <% if not loop.last %>
-\par\vspace{4pt}
+\par\vspace{<< between_entry >>}
 <% endif %>
 <% endif %>
 <% endfor %>
@@ -137,7 +170,7 @@
   topsep  = 0pt,
   partopsep = 0pt,
   leftmargin = 1.2em,
-  label = {\textbullet}
+  label = {<< bullet_label >>}
 ]
 <% for proj in projects %>
 <% if proj.name %>
@@ -159,7 +192,7 @@
   topsep  = 0pt,
   partopsep = 0pt,
   leftmargin = 1.2em,
-  label = {\textbullet}
+  label = {<< bullet_label >>}
 ]
 <% for pub in publications %>
 <% if pub.title %>
@@ -183,7 +216,7 @@
 \noindent\textit{Courses:} << edu.coursework | e >>%
 <% endif %>
 <% if not loop.last %>
-\par\vspace{4pt}
+\par\vspace{<< between_entry >>}
 <% endif %>
 <% endif %>
 <% endfor %>
@@ -213,7 +246,7 @@
 \entryrow{<< vol.org | e >>}{<< vol.location | e >>}\\[-3pt]
 \subrow{<< vol.description | e >>}{<< vol.duration | e >>}
 <% if not loop.last %>
-\par\vspace{4pt}
+\par\vspace{<< between_entry >>}
 <% endif %>
 <% endif %>
 <% endfor %>
