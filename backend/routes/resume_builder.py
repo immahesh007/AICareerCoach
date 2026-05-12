@@ -13,6 +13,7 @@ class BasicsModel(BaseModel):
     name: str = ""
     portfolio: str = ""
     github: str = ""
+    linkedin: str = ""
     email: str = ""
     phone: str = ""
 
