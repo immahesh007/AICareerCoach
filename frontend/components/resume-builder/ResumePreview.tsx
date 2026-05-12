@@ -2,116 +2,125 @@
 
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import type { ResumeData } from '@/types/resume';
+import type { ResumeData, ResumeDesignSettings } from '@/types/resume';
+import { DEFAULT_DESIGN_SETTINGS, FONT_SIZE_MAP, MARGIN_MAP, FONT_FAMILY_MAP, BULLET_STYLE_MAP, SPACING_MAP } from '@/types/resume';
 
-// ─── A4 page geometry (matches LaTeX template margins) ───────────────────────
+// ─── A4 page geometry ───────────────────────────────────────────────────────
 
 const PAGE_WIDTH_MM = 210;
 const PAGE_HEIGHT_MM = 297;
-const PADDING_V_MM = 16.51; // 0.65 in
-const PADDING_H_MM = 19.05; // 0.75 in
-const MM_PER_PX = 25.4 / 96; // CSS px → mm at 96dpi
-const INNER_HEIGHT_PX = (PAGE_HEIGHT_MM - 2 * PADDING_V_MM) / MM_PER_PX;
+const MM_PER_PX = 25.4 / 96;
 
-// ─── style constants ──────────────────────────────────────────────────────────
+function getMargins(design: ResumeDesignSettings) {
+  return MARGIN_MAP[design.marginSize];
+}
 
-const S = {
-  page: {
-    fontFamily: "'TeX Gyre Heros', 'Helvetica Neue', Helvetica, Arial, sans-serif",
-    fontSize: '10.5px',
-    color: '#000',
-    lineHeight: '1.45',
-    boxSizing: 'border-box' as const,
-  },
-  name: {
-    fontSize: '23px',
-    fontWeight: 'bold' as const,
-    lineHeight: '1.2',
-    marginBottom: '1px',
-  },
-  contactLine: {
-    fontSize: '10.5px',
-    marginTop: '1px',
-  },
-  headerWrap: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: '3px',
-  },
-  headerRight: {
-    textAlign: 'right' as const,
-  },
-  sectionTitle: {
-    fontVariant: 'small-caps' as const,
-    fontWeight: 'bold' as const,
-    fontSize: '11.5px',
-    letterSpacing: '0.03em',
-    marginTop: '9px',
-    marginBottom: '2px',
-  },
-  hr: {
-    border: 'none',
-    borderTop: '0.7px solid #000',
-    margin: '0 0 5px 0',
-  },
-  bulletRow: {
-    display: 'flex',
-    gap: '5px',
-    marginBottom: '4px',
-  },
-  bullet: {
-    flexShrink: 0,
-    width: '10px',
-    textAlign: 'center' as const,
-    paddingTop: '0px',
-  },
-  twoCol: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'baseline',
-    width: '100%',
-    gap: '8px',
-  },
-  subBulletWrap: {
-    display: 'flex',
-    gap: '5px',
-    marginTop: '2px',
-  },
-  subBullet: {
-    flexShrink: 0,
-    width: '10px',
-    textAlign: 'center' as const,
-  },
-};
+function getInnerHeightPx(design: ResumeDesignSettings) {
+  const m = getMargins(design);
+  return (PAGE_HEIGHT_MM - m.top - m.bottom) / MM_PER_PX;
+}
+
+// ─── style factory (recomputed when design changes) ──────────────────────────
+
+function getS(design: ResumeDesignSettings) {
+  const fontSize = FONT_SIZE_MAP[design.fontSize].css;
+  const fontFamily = FONT_FAMILY_MAP[design.fontFamily].css;
+  const spacing = SPACING_MAP[design.spacing];
+  const bulletSymbol = BULLET_STYLE_MAP[design.bulletStyle].symbol;
+
+  return {
+    page: {
+      fontFamily,
+      fontSize,
+      color: '#000',
+      lineHeight: spacing.lineHeight,
+      boxSizing: 'border-box' as const,
+    },
+    name: {
+      fontSize: '23px',
+      fontWeight: 'bold' as const,
+      lineHeight: '1.2',
+      marginBottom: '1px',
+    },
+    contactLine: {
+      fontSize,
+      marginTop: '1px',
+    },
+    headerWrap: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+      marginBottom: '3px',
+    },
+    headerRight: {
+      textAlign: 'right' as const,
+    },
+    sectionTitle: {
+      fontVariant: 'small-caps' as const,
+      fontWeight: 'bold' as const,
+      fontSize: '11.5px',
+      letterSpacing: '0.03em',
+      marginTop: `${spacing.sectionGap}px`,
+      marginBottom: '2px',
+    },
+    hr: {
+      border: 'none',
+      borderTop: '0.7px solid #000',
+      margin: '0 0 5px 0',
+    },
+    bulletRow: {
+      display: 'flex',
+      gap: '5px',
+      marginBottom: `${spacing.itemGap}px`,
+    },
+    bullet: {
+      flexShrink: 0,
+      width: '10px',
+      textAlign: 'center' as const,
+      paddingTop: '0px',
+    },
+    bulletSymbol,
+    twoCol: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'baseline',
+      width: '100%',
+      gap: '8px',
+    },
+    subBulletWrap: {
+      display: 'flex',
+      gap: '5px',
+      marginTop: '2px',
+    },
+    subBullet: {
+      flexShrink: 0,
+      width: '10px',
+      textAlign: 'center' as const,
+    },
+  };
+}
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
-function SectionHeader({ title }: { title: string }) {
+function SectionHeader({ title, styles }: { title: string; styles: ReturnType<typeof getS> }) {
   return (
     <>
-      <div style={S.sectionTitle}>{title}</div>
-      <hr style={S.hr} />
+      <div style={styles.sectionTitle}>{title}</div>
+      <hr style={styles.hr} />
     </>
   );
 }
 
-function BulletRow({ children }: { children: ReactNode }) {
+function BulletRow({ children, styles }: { children: ReactNode; styles: ReturnType<typeof getS> }) {
   return (
-    <div style={S.bulletRow}>
-      <span style={S.bullet}>•</span>
+    <div style={styles.bulletRow}>
+      <span style={styles.bullet}>{styles.bulletSymbol}</span>
       <div style={{ flex: 1 }}>{children}</div>
     </div>
   );
 }
 
 // ─── block builder ────────────────────────────────────────────────────────────
-//
-// The resume is split into independently-measurable blocks. Each block is one
-// header, one paragraph, or one entry (per company, per project, per award…).
-// `keepWithNext` is set on section headers so that a section title never ends
-// up alone at the bottom of a page — it always stays with at least the first
-// item of its section.
 
 type Block = {
   key: string;
@@ -119,7 +128,7 @@ type Block = {
   keepWithNext?: boolean;
 };
 
-function buildBlocks(data: ResumeData): Block[] {
+function buildBlocks(data: ResumeData, S: ReturnType<typeof getS>): Block[] {
   const blocks: Block[] = [];
   const { basics, summary, education, skillCategories, experience, projects, publications, awards, volunteer } = data;
 
@@ -136,6 +145,9 @@ function buildBlocks(data: ResumeData): Block[] {
           {basics.github && (
             <div style={S.contactLine}>Github:&nbsp;&nbsp;&nbsp; {basics.github}</div>
           )}
+          {basics.linkedin && (
+            <div style={S.contactLine}>LinkedIn: {basics.linkedin}</div>
+          )}
         </div>
         <div style={S.headerRight}>
           {basics.email && <div style={S.contactLine}>Email: {basics.email}</div>}
@@ -147,7 +159,7 @@ function buildBlocks(data: ResumeData): Block[] {
 
   // ── SUMMARY ────────────────────────────────────────────────────────────────
   if (summary && summary.trim()) {
-    blocks.push({ key: 'summary-h', el: <SectionHeader title="Summary" />, keepWithNext: true });
+    blocks.push({ key: 'summary-h', el: <SectionHeader title="Summary" styles={S} />, keepWithNext: true });
     blocks.push({
       key: 'summary',
       el: <div style={{ marginBottom: '4px' }}>{summary}</div>,
@@ -157,18 +169,17 @@ function buildBlocks(data: ResumeData): Block[] {
   // ── SKILLS SUMMARY ─────────────────────────────────────────────────────────
   const skills = skillCategories?.filter(s => s.items.trim()) ?? [];
   if (skills.length) {
-    blocks.push({ key: 'skills-h', el: <SectionHeader title="Skills Summary" />, keepWithNext: true });
+    blocks.push({ key: 'skills-h', el: <SectionHeader title="Skills Summary" styles={S} />, keepWithNext: true });
     skills.forEach((skill, i) => {
       blocks.push({
         key: `skill-${i}`,
         el: (
-          <BulletRow>
+          <BulletRow styles={S}>
             <span>
               <strong>{skill.category}</strong>:&nbsp;&nbsp;&nbsp;{skill.items}
             </span>
           </BulletRow>
         ),
-        // Keep title with first row only; subsequent skill rows can break freely.
         keepWithNext: i === 0 ? false : false,
       });
     });
@@ -176,12 +187,12 @@ function buildBlocks(data: ResumeData): Block[] {
 
   // ── EXPERIENCE ─────────────────────────────────────────────────────────────
   if (experience?.length) {
-    blocks.push({ key: 'exp-h', el: <SectionHeader title="Experience" />, keepWithNext: true });
+    blocks.push({ key: 'exp-h', el: <SectionHeader title="Experience" styles={S} />, keepWithNext: true });
     experience.forEach((exp, i) => {
       blocks.push({
         key: `exp-${i}`,
         el: (
-          <BulletRow>
+          <BulletRow styles={S}>
             <div style={S.twoCol}>
               <span style={{ fontWeight: 'bold' }}>{exp.company}</span>
               <span style={{ whiteSpace: 'nowrap' as const }}>{exp.location}</span>
@@ -212,12 +223,12 @@ function buildBlocks(data: ResumeData): Block[] {
   // ── PROJECTS ───────────────────────────────────────────────────────────────
   const validProjects = projects?.filter(p => p.name.trim()) ?? [];
   if (validProjects.length) {
-    blocks.push({ key: 'projects-h', el: <SectionHeader title="Projects" />, keepWithNext: true });
+    blocks.push({ key: 'projects-h', el: <SectionHeader title="Projects" styles={S} />, keepWithNext: true });
     validProjects.forEach((proj, i) => {
       blocks.push({
         key: `proj-${i}`,
         el: (
-          <BulletRow>
+          <BulletRow styles={S}>
             <span>
               <strong>{proj.name}</strong>
               {proj.tags && ` (${proj.tags})`}
@@ -234,12 +245,12 @@ function buildBlocks(data: ResumeData): Block[] {
   // ── PUBLICATIONS ───────────────────────────────────────────────────────────
   const validPubs = publications?.filter(p => p.title.trim()) ?? [];
   if (validPubs.length) {
-    blocks.push({ key: 'pubs-h', el: <SectionHeader title="Publications" />, keepWithNext: true });
+    blocks.push({ key: 'pubs-h', el: <SectionHeader title="Publications" styles={S} />, keepWithNext: true });
     validPubs.forEach((pub, i) => {
       blocks.push({
         key: `pub-${i}`,
         el: (
-          <BulletRow>
+          <BulletRow styles={S}>
             <span>
               {pub.prefix && <><strong>{pub.prefix}:</strong>{' '}</>}
               <strong>{pub.title}</strong>
@@ -256,12 +267,12 @@ function buildBlocks(data: ResumeData): Block[] {
 
   // ── EDUCATION ──────────────────────────────────────────────────────────────
   if (education?.length) {
-    blocks.push({ key: 'edu-h', el: <SectionHeader title="Education" />, keepWithNext: true });
+    blocks.push({ key: 'edu-h', el: <SectionHeader title="Education" styles={S} />, keepWithNext: true });
     education.forEach((edu, i) => {
       blocks.push({
         key: `edu-${i}`,
         el: (
-          <BulletRow>
+          <BulletRow styles={S}>
             <div style={S.twoCol}>
               <span style={{ fontWeight: 'bold' }}>{edu.institution}</span>
               <span style={{ whiteSpace: 'nowrap' as const }}>{edu.location}</span>
@@ -286,12 +297,12 @@ function buildBlocks(data: ResumeData): Block[] {
   // ── HONORS AND AWARDS ─────────────────────────────────────────────────────
   const validAwards = awards?.filter(a => a.name.trim()) ?? [];
   if (validAwards.length) {
-    blocks.push({ key: 'awards-h', el: <SectionHeader title="Honors And Awards" />, keepWithNext: true });
+    blocks.push({ key: 'awards-h', el: <SectionHeader title="Honors And Awards" styles={S} />, keepWithNext: true });
     validAwards.forEach((award, i) => {
       blocks.push({
         key: `award-${i}`,
         el: (
-          <BulletRow>
+          <BulletRow styles={S}>
             <span>
               {award.name}
               {award.date && ` - ${award.date}`}
@@ -305,12 +316,12 @@ function buildBlocks(data: ResumeData): Block[] {
   // ── VOLUNTEER EXPERIENCE ──────────────────────────────────────────────────
   const validVol = volunteer?.filter(v => v.org.trim()) ?? [];
   if (validVol.length) {
-    blocks.push({ key: 'vol-h', el: <SectionHeader title="Volunteer Experience" />, keepWithNext: true });
+    blocks.push({ key: 'vol-h', el: <SectionHeader title="Volunteer Experience" styles={S} />, keepWithNext: true });
     validVol.forEach((vol, i) => {
       blocks.push({
         key: `vol-${i}`,
         el: (
-          <BulletRow>
+          <BulletRow styles={S}>
             <div style={S.twoCol}>
               <span style={{ fontWeight: 'bold' }}>{vol.org}</span>
               <span style={{ whiteSpace: 'nowrap' as const }}>{vol.location}</span>
@@ -331,10 +342,6 @@ function buildBlocks(data: ResumeData): Block[] {
 }
 
 // ─── page packing ─────────────────────────────────────────────────────────────
-//
-// Greedy: walk the block list, fit as many as possible into the current page.
-// Treat a `keepWithNext` block + its following block as an atomic unit so a
-// section header never lands alone at the foot of a page.
 
 function packIntoPages(
   blocks: Block[],
@@ -348,7 +355,6 @@ function packIntoPages(
 
   let i = 0;
   while (i < blocks.length) {
-    // Build the atomic unit starting at i (header glued to next block).
     let unitEnd = i;
     let unitH = heights[i] ?? 0;
     while (blocks[unitEnd]?.keepWithNext && unitEnd + 1 < blocks.length) {
@@ -376,18 +382,28 @@ function packIntoPages(
 
 // ─── main component ──────────────────────────────────────────────────────────
 
-export default function ResumePreview({ data }: { data: ResumeData }) {
-  const blocks = useMemo(() => buildBlocks(data), [data]);
+export default function ResumePreview({
+  data,
+  design = DEFAULT_DESIGN_SETTINGS,
+}: {
+  data: ResumeData;
+  design?: ResumeDesignSettings;
+}) {
+  const S = useMemo(() => getS(design), [design]);
+  const paddingV = MARGIN_MAP[design.marginSize].top;
+  const paddingH = MARGIN_MAP[design.marginSize].left;
+  const innerHeightPx = useMemo(() => getInnerHeightPx(design), [design]);
+  const printWidthPx = PAGE_WIDTH_MM - 2 * paddingH;
+
+  const blocks = useMemo(() => buildBlocks(data, S), [data, S]);
   const measureRefs = useRef<(HTMLDivElement | null)[]>([]);
   const [pages, setPages] = useState<number[][]>(() => [blocks.map((_, i) => i)]);
 
   useLayoutEffect(() => {
-    // Re-measure on every blocks change (i.e., every data edit).
     const recompute = () => {
       const heights = blocks.map((_, i) => measureRefs.current[i]?.offsetHeight ?? 0);
       setPages(prev => {
-        const next = packIntoPages(blocks, heights, INNER_HEIGHT_PX);
-        // Avoid spurious updates when nothing meaningfully changed.
+        const next = packIntoPages(blocks, heights, innerHeightPx);
         if (
           prev.length === next.length &&
           prev.every((p, i) => p.length === next[i].length && p.every((v, j) => v === next[i][j]))
@@ -398,21 +414,14 @@ export default function ResumePreview({ data }: { data: ResumeData }) {
       });
     };
     recompute();
-    // Re-measure when any block resizes (fonts loaded, content reflowed, etc.)
     const ro = new ResizeObserver(recompute);
     measureRefs.current.forEach(el => el && ro.observe(el));
     return () => ro.disconnect();
-  }, [blocks]);
+  }, [blocks, innerHeightPx]);
 
   return (
     <>
-      {/*
-        Hidden measurement column. Each block is rendered at the exact width it
-        will appear at in a real page (210mm − 2 × 19.05mm padding), so the
-        offsetHeight we read here is the height it will occupy in the live page.
-        Also serves as the print source — `handleDownload` reads its outerHTML
-        if you ever wire a browser-print fallback in.
-      */}
+      {/* Hidden measurement column */}
       <div
         id="resume-print"
         aria-hidden
@@ -420,7 +429,7 @@ export default function ResumePreview({ data }: { data: ResumeData }) {
           position: 'fixed',
           top: 0,
           left: '-99999px',
-          width: `${PAGE_WIDTH_MM - 2 * PADDING_H_MM}mm`,
+          width: `${printWidthPx}mm`,
           visibility: 'hidden',
           pointerEvents: 'none',
         }}
@@ -439,7 +448,7 @@ export default function ResumePreview({ data }: { data: ResumeData }) {
         </div>
       </div>
 
-      {/* Visible: stack of A4 pages, each carrying the blocks assigned to it. */}
+      {/* Visible: stack of A4 pages */}
       <div
         id="resume-preview"
         style={{
@@ -458,7 +467,7 @@ export default function ResumePreview({ data }: { data: ResumeData }) {
               background: '#fff',
               boxShadow: '0 4px 12px rgba(0, 0, 0, 0.18)',
               borderRadius: '2px',
-              padding: `${PADDING_V_MM}mm ${PADDING_H_MM}mm`,
+              padding: `${paddingV}mm ${paddingH}mm`,
               boxSizing: 'border-box',
               flexShrink: 0,
             }}
