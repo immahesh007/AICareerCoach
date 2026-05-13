@@ -68,7 +68,6 @@ export interface ResumeData {
   publications: PublicationItem[];
   awards: Award[];
   volunteer: VolunteerItem[];
-  _design?: ResumeDesignSettings;
 }
 
 export interface GenerateResponse {

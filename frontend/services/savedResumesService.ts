@@ -9,6 +9,7 @@ export interface SavedResumeSummary {
 
 export interface SavedResumeFull extends SavedResumeSummary {
   resume_data: ResumeData;
+  design?: ResumeDesignSettings | null;
 }
 
 export interface SavedResumeListResponse {
@@ -43,7 +44,7 @@ export async function saveResume(
 ): Promise<SavedResumeFull> {
   const body: Record<string, unknown> = { name, company, resume_data: resumeData };
   if (design) {
-    (body.resume_data as ResumeData)._design = design;
+    body.design = design;
   }
   const res = await fetch('/api/saved-resumes', {
     method: 'POST',

@@ -281,8 +281,8 @@ export default function ResumeBuilderClient() {
         if (cancelled) return;
         setData(res.resume_data);
         setEditingName(res.name);
-        if (res.resume_data._design) {
-          setDesign(res.resume_data._design);
+        if (res.design) {
+          setDesign(res.design);
         }
         setPrefillState('success');
       })

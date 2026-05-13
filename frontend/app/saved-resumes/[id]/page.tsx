@@ -149,7 +149,7 @@ function SavedResumeViewer() {
 
             <div className="rounded-2xl bg-gray-200/10 p-4 overflow-auto">
               <div className="w-fit mx-auto">
-                <ResumePreview data={data.resume_data} design={data.resume_data._design ?? DEFAULT_DESIGN_SETTINGS} />
+                <ResumePreview data={data.resume_data} design={data.design ?? DEFAULT_DESIGN_SETTINGS} />
               </div>
             </div>
           </>
