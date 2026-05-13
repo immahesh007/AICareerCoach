@@ -2,16 +2,17 @@
 
 import { useEffect, useState } from 'react';
 import { saveResume } from '@/services/savedResumesService';
-import type { ResumeData } from '@/types/resume';
+import type { ResumeData, ResumeDesignSettings } from '@/types/resume';
 
 interface Props {
   isOpen: boolean;
   data: ResumeData;
+  design: ResumeDesignSettings;
   onClose: () => void;
   onSaved: (savedId: string) => void;
 }
 
-export default function SaveResumeModal({ isOpen, data, onClose, onSaved }: Props) {
+export default function SaveResumeModal({ isOpen, data, design, onClose, onSaved }: Props) {
   const [name, setName] = useState('');
   const [company, setCompany] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -47,7 +48,7 @@ export default function SaveResumeModal({ isOpen, data, onClose, onSaved }: Prop
     setSubmitting(true);
     setError(null);
     try {
-      const saved = await saveResume(name.trim(), company.trim() || null, data);
+      const saved = await saveResume(name.trim(), company.trim() || null, data, design);
       onSaved(saved.id);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save resume.');

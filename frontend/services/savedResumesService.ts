@@ -1,4 +1,4 @@
-import type { ResumeData } from '@/types/resume';
+import type { ResumeData, ResumeDesignSettings } from '@/types/resume';
 
 export interface SavedResumeSummary {
   id: string;
@@ -39,11 +39,16 @@ export async function saveResume(
   name: string,
   company: string | null,
   resumeData: ResumeData,
+  design?: ResumeDesignSettings,
 ): Promise<SavedResumeFull> {
+  const body: Record<string, unknown> = { name, company, resume_data: resumeData };
+  if (design) {
+    (body.resume_data as ResumeData)._design = design;
+  }
   const res = await fetch('/api/saved-resumes', {
     method: 'POST',
     headers: authHeaders(),
-    body: JSON.stringify({ name, company, resume_data: resumeData }),
+    body: JSON.stringify(body),
   });
   return parseOrThrow<SavedResumeFull>(res, 'Failed to save resume.');
 }
