@@ -281,6 +281,9 @@ export default function ResumeBuilderClient() {
         if (cancelled) return;
         setData(res.resume_data);
         setEditingName(res.name);
+        if (res.resume_data._design) {
+          setDesign(res.resume_data._design);
+        }
         setPrefillState('success');
       })
       .catch(err => {
@@ -987,6 +990,7 @@ export default function ResumeBuilderClient() {
       <SaveResumeModal
         isOpen={saveOpen}
         data={data}
+        design={design}
         onClose={() => setSaveOpen(false)}
         onSaved={() => {
           setSaveOpen(false);

@@ -70,6 +70,8 @@ class VolunteerItem(BaseModel):
 
 
 class ResumeGenerateRequest(BaseModel):
+    model_config = {"extra": "allow"}
+
     basics: BasicsModel = BasicsModel()
     summary: str = ""
     education: list[EducationItem] = []

@@ -7,6 +7,7 @@ import Navbar from '@/components/Navbar';
 import ResumePreview from '@/components/resume-builder/ResumePreview';
 import { useAuth } from '@/context/AuthContext';
 import { getSavedResume, type SavedResumeFull } from '@/services/savedResumesService';
+import { DEFAULT_DESIGN_SETTINGS } from '@/types/resume';
 
 function formatDate(iso: string | null): string {
   if (!iso) return '';
@@ -148,7 +149,7 @@ function SavedResumeViewer() {
 
             <div className="rounded-2xl bg-gray-200/10 p-4 overflow-auto">
               <div className="w-fit mx-auto">
-                <ResumePreview data={data.resume_data} />
+                <ResumePreview data={data.resume_data} design={data.resume_data._design ?? DEFAULT_DESIGN_SETTINGS} />
               </div>
             </div>
           </>
