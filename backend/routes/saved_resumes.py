@@ -21,6 +21,7 @@ class SaveResumeRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=120)
     company: Optional[str] = Field(default=None, max_length=120)
     resume_data: dict[str, Any]
+    design: Optional[dict[str, Any]] = None
 
 
 def _serialize_summary(record) -> dict:
@@ -33,9 +34,12 @@ def _serialize_summary(record) -> dict:
 
 
 def _serialize_full(record) -> dict:
+    data = dict(record.resume_data) if record.resume_data else {}
+    design = data.pop("_design", None)
     return {
         **_serialize_summary(record),
-        "resume_data": record.resume_data,
+        "resume_data": data,
+        "design": design,
     }
 
 
@@ -52,12 +56,15 @@ async def save_resume(
     db: AsyncSession = Depends(get_db),
     current_user_id: str = Depends(get_current_user_id),
 ):
+    resume_data = dict(body.resume_data)
+    if body.design:
+        resume_data["_design"] = body.design
     record = await insert_saved_resume(
         db,
         user_id=current_user_id,
         name=body.name.strip(),
         company=(body.company.strip() or None) if body.company else None,
-        resume_data=body.resume_data,
+        resume_data=resume_data,
     )
     return _serialize_full(record)
 
