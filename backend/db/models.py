@@ -1,7 +1,7 @@
 import uuid
 from enum import Enum as PyEnum
 
-from sqlalchemy import Column, Enum, Float, ForeignKey, Index, Integer, String, Text, TIMESTAMP
+from sqlalchemy import Column, Enum, Float, ForeignKey, Index, Integer, String, Text, TIMESTAMP, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.sql import func
@@ -194,7 +194,10 @@ class JobGeneratedResume(Base):
     s3_key = Column(Text)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
 
-    __table_args__ = (Index("ix_job_generated_resumes_resume_id", "resume_id"),)
+    __table_args__ = (
+        Index("ix_job_generated_resumes_resume_id", "resume_id"),
+        UniqueConstraint("resume_id", "job_id", name="uq_job_generated_resumes_resume_job"),
+    )
 
 
 class User(Base):

@@ -15,6 +15,7 @@ export interface MatchJob {
   matched_skills: string[];
   missing_skills: string[];
   reason: string;
+  generated_id: string | null;
 }
 
 export interface MatchJobsResponse {

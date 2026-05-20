@@ -39,3 +39,9 @@ async def download_file(key: str) -> bytes:
         resp = await s3.get_object(Bucket=settings.S3_BUCKET_NAME, Key=key)
         async with resp["Body"] as stream:
             return await stream.read()
+
+
+async def delete_file(key: str) -> None:
+    async with _session.client("s3") as s3:
+        await s3.delete_object(Bucket=settings.S3_BUCKET_NAME, Key=key)
+    logger.info("Deleted s3://%s/%s", settings.S3_BUCKET_NAME, key)

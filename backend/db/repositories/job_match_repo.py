@@ -2,6 +2,7 @@ import uuid
 from typing import Optional
 
 from sqlalchemy import func, select, update as sa_update
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.models import JobGeneratedResume, JobMatch, JobMatchBatch, JobMatchTask
@@ -210,21 +211,37 @@ async def insert_generated_resume(
     generated_data: dict,
     s3_key: Optional[str] = None,
 ) -> JobGeneratedResume:
-    record = JobGeneratedResume(
-        id=uuid.uuid4(),
-        resume_id=resume_id,
-        user_id=user_id,
-        job_id=job_id,
-        job_title=job_title,
-        company=company,
-        location=location,
-        match_score=match_score,
-        generated_data=generated_data,
-        s3_key=s3_key,
+    stmt = (
+        pg_insert(JobGeneratedResume)
+        .values(
+            id=uuid.uuid4(),
+            resume_id=resume_id,
+            user_id=user_id,
+            job_id=job_id,
+            job_title=job_title,
+            company=company,
+            location=location,
+            match_score=match_score,
+            generated_data=generated_data,
+            s3_key=s3_key,
+        )
+        .on_conflict_do_update(
+            constraint="uq_job_generated_resumes_resume_job",
+            set_={
+                "user_id": user_id,
+                "job_title": job_title,
+                "company": company,
+                "location": location,
+                "match_score": match_score,
+                "generated_data": generated_data,
+                "s3_key": s3_key,
+            },
+        )
+        .returning(JobGeneratedResume)
     )
-    db.add(record)
+    result = await db.execute(stmt)
+    record = result.scalar_one()
     await db.flush()
-    await db.refresh(record)
     return record
 
 
@@ -234,5 +251,30 @@ async def get_generated_resume(
 ) -> Optional[JobGeneratedResume]:
     result = await db.execute(
         select(JobGeneratedResume).where(JobGeneratedResume.id == generated_id)
+    )
+    return result.scalar_one_or_none()
+
+
+async def list_generated_ids_for_resume(
+    db: AsyncSession,
+    resume_id: uuid.UUID,
+) -> dict[str, uuid.UUID]:
+    """Return mapping of job_id → generated_id for all generated resumes of a resume."""
+    result = await db.execute(
+        select(JobGeneratedResume.job_id, JobGeneratedResume.id)
+        .where(JobGeneratedResume.resume_id == resume_id)
+    )
+    return {row.job_id: row.id for row in result.all()}
+
+
+async def get_existing_generated_resume(
+    db: AsyncSession,
+    resume_id: uuid.UUID,
+    job_id: str,
+) -> Optional[JobGeneratedResume]:
+    """Get the generated resume for a specific (resume, job) pair if it exists."""
+    result = await db.execute(
+        select(JobGeneratedResume)
+        .where(JobGeneratedResume.resume_id == resume_id, JobGeneratedResume.job_id == job_id)
     )
     return result.scalar_one_or_none()
