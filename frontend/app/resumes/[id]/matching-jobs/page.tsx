@@ -42,6 +42,10 @@ export default function MatchingJobsPage() {
   const [generating, setGenerating] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Overwrite confirmation
+  const [overwriteCount, setOverwriteCount] = useState(0);
+  const [showOverwriteDialog, setShowOverwriteDialog] = useState(false);
+
   // Auth guard
   useEffect(() => {
     const t = window.setTimeout(() => setAuthReady(true), 0);
@@ -93,6 +97,8 @@ export default function MatchingJobsPage() {
         if (status.status === 'completed' || status.status === 'partial') {
           if (pollRef.current) clearInterval(pollRef.current);
           setGenerating(false);
+          // Refetch table so persistent generated_id values appear in rows
+          fetchPage(page);
         }
       } catch {
         // silent poll failure
@@ -133,7 +139,7 @@ export default function MatchingJobsPage() {
     setSelectedJobs(new Set());
   };
 
-  const handleGenerate = async () => {
+  const doGenerate = useCallback(async () => {
     if (!resumeId || selectedJobs.size === 0) return;
     setGenerating(true);
     setError(null);
@@ -147,7 +153,25 @@ export default function MatchingJobsPage() {
       setError(e instanceof Error ? e.message : 'Failed to start generation.');
       setGenerating(false);
     }
-  };
+  }, [resumeId, selectedJobs]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleGenerate = useCallback(async () => {
+    if (!resumeId || selectedJobs.size === 0 || !data) return;
+    const overwrites = data.items.filter(
+      j => selectedJobs.has(j.job_id) && j.generated_id
+    );
+    if (overwrites.length > 0) {
+      setOverwriteCount(overwrites.length);
+      setShowOverwriteDialog(true);
+      return;
+    }
+    await doGenerate();
+  }, [resumeId, selectedJobs, data, doGenerate]);
+
+  const confirmOverwrite = useCallback(async () => {
+    setShowOverwriteDialog(false);
+    await doGenerate();
+  }, [doGenerate]);
 
   const handleViewResume = (generatedId: string) => {
     router.push(`/resume-builder?generated_id=${generatedId}`);
@@ -338,6 +362,7 @@ export default function MatchingJobsPage() {
                       expanded={expandedRows.has(job.job_id)}
                       onToggle={() => toggleJob(job.job_id)}
                       onExpand={() => toggleExpand(job.job_id)}
+                      onViewResume={handleViewResume}
                     />
                   ))}
                 </tbody>
@@ -353,6 +378,7 @@ export default function MatchingJobsPage() {
                     expanded={expandedRows.has(job.job_id)}
                     onToggle={() => toggleJob(job.job_id)}
                     onExpand={() => toggleExpand(job.job_id)}
+                    onViewResume={handleViewResume}
                   />
                 ))}
               </ul>
@@ -385,6 +411,40 @@ export default function MatchingJobsPage() {
           </div>
         )}
       </main>
+
+      {/* Overwrite confirmation dialog */}
+      {showOverwriteDialog && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4"
+          onClick={() => setShowOverwriteDialog(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl border border-white/15 bg-indigo-950/95 shadow-2xl p-6"
+            onClick={e => e.stopPropagation()}
+          >
+            <h2 className="text-lg font-bold text-white mb-1">Already generated?</h2>
+            <p className="text-xs text-indigo-200 mb-5">
+              {overwriteCount} job{overwriteCount !== 1 ? 's' : ''} you selected
+              already {overwriteCount !== 1 ? 'have' : 'has'} a generated resume.
+              Generating again will overwrite the existing one.
+            </p>
+            <div className="flex items-center justify-end gap-2">
+              <button
+                onClick={() => setShowOverwriteDialog(false)}
+                className="px-4 py-2 rounded-full bg-white/10 hover:bg-white/15 text-white/80 text-xs font-semibold border border-white/15 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmOverwrite}
+                className="px-5 py-2 rounded-full bg-amber-500 hover:bg-amber-400 text-indigo-950 text-xs font-semibold transition-colors"
+              >
+                Overwrite
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -397,12 +457,14 @@ function Row({
   expanded,
   onToggle,
   onExpand,
+  onViewResume,
 }: {
   job: MatchJob;
   selected: boolean;
   expanded: boolean;
   onToggle: () => void;
   onExpand: () => void;
+  onViewResume: (generatedId: string) => void;
 }) {
   return (
     <>
@@ -423,9 +485,19 @@ function Row({
         <td className="px-4 py-4 text-indigo-200 text-sm">{job.company}</td>
         <td className="px-4 py-4 text-indigo-200/70 text-sm">{job.location}</td>
         <td className="px-4 py-4 text-right">
-          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${scoreBadge(job.final_score)}`}>
-            {job.final_score.toFixed(0)}
-          </span>
+          <div className="flex items-center justify-end gap-2">
+            {job.generated_id && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onViewResume(job.generated_id!); }}
+                className="px-2.5 py-1 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-semibold transition-colors"
+              >
+                View Resume
+              </button>
+            )}
+            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${scoreBadge(job.final_score)}`}>
+              {job.final_score.toFixed(0)}
+            </span>
+          </div>
         </td>
       </tr>
       {expanded && (
@@ -502,12 +574,14 @@ function MobileRow({
   expanded,
   onToggle,
   onExpand,
+  onViewResume,
 }: {
   job: MatchJob;
   selected: boolean;
   expanded: boolean;
   onToggle: () => void;
   onExpand: () => void;
+  onViewResume: (generatedId: string) => void;
 }) {
   return (
     <li className="px-5 py-4 space-y-3">
@@ -526,9 +600,19 @@ function MobileRow({
             {job.company} {job.location ? `· ${job.location}` : ''}
           </div>
         </div>
-        <span className={`shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${scoreBadge(job.final_score)}`}>
-          {job.final_score.toFixed(0)}
-        </span>
+        <div className="shrink-0 flex items-center gap-2">
+          {job.generated_id && (
+            <button
+              onClick={() => onViewResume(job.generated_id!)}
+              className="px-2.5 py-1 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-semibold transition-colors"
+            >
+              View Resume
+            </button>
+          )}
+          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${scoreBadge(job.final_score)}`}>
+            {job.final_score.toFixed(0)}
+          </span>
+        </div>
       </div>
 
       {expanded && (

@@ -14,7 +14,7 @@ from db.connection import AsyncSessionLocal, get_db
 from db.models import JobMatchTask
 from db.repositories import job_match_repo, parsed_resume_repo, resume_repo
 from services.llm_service import enhance_resume_for_job
-from services.s3_service import get_presigned_url, upload_file
+from services.s3_service import delete_file, get_presigned_url, upload_file
 
 logger = logging.getLogger(__name__)
 
@@ -182,10 +182,17 @@ async def get_matching_jobs(
     if cached is None:
         raise HTTPException(status_code=404, detail="No cached matches. Run match-jobs first.")
 
+    # Enrich each job match with its generated_id if one exists
+    generated_map = await job_match_repo.list_generated_ids_for_resume(db, resume.id)
+    paginated = _paginated_matches(cached.match_results, page, page_size)
+    for item in paginated["items"]:
+        gid = generated_map.get(item.get("job_id", ""))
+        item["generated_id"] = str(gid) if gid else None
+
     return {
         "resume_id": str(resume.id),
         "matched_at": cached.matched_at.isoformat() if cached.matched_at else None,
-        **_paginated_matches(cached.match_results, page, page_size),
+        **paginated,
     }
 
 
@@ -327,7 +334,17 @@ async def _process_single_task(
         s3_key = f"generated-resumes/{user_id}/{uuid.uuid4()}.pdf"
         await upload_file(pdf_bytes, s3_key, "application/pdf")
 
-        # 4) Store generated resume
+        # Delete old S3 object if overwriting an existing generated resume
+        existing = await job_match_repo.get_existing_generated_resume(
+            db, resume_id=resume_id, job_id=task.job_id
+        )
+        if existing and existing.s3_key:
+            try:
+                await delete_file(existing.s3_key)
+            except Exception:
+                logger.warning("Failed to delete old S3 key: %s", existing.s3_key)
+
+        # 4) Store generated resume (UPSERT on resume_id + job_id)
         generated = await job_match_repo.insert_generated_resume(
             db,
             resume_id=resume_id,
