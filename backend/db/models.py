@@ -117,6 +117,86 @@ class SavedResume(Base):
     __table_args__ = (Index("ix_saved_resumes_user_saved_at", "user_id", "saved_at"),)
 
 
+class JobMatch(Base):
+    __tablename__ = "job_matches"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    resume_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("resume_metadata.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    user_id = Column(Text, nullable=False)
+    match_results = Column(JSONB, nullable=False)
+    matched_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+
+    __table_args__ = (Index("ix_job_matches_resume_id", "resume_id"),)
+
+
+class JobMatchBatch(Base):
+    __tablename__ = "job_match_batches"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    resume_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("resume_metadata.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    user_id = Column(Text, nullable=False)
+    total_tasks = Column(Integer, nullable=False, default=0)
+    completed_tasks = Column(Integer, nullable=False, default=0)
+    status = Column(Text, nullable=False, default="pending")
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+
+    __table_args__ = (Index("ix_job_match_batches_resume_id", "resume_id"),)
+
+
+class JobMatchTask(Base):
+    __tablename__ = "job_match_tasks"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    batch_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("job_match_batches.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    job_id = Column(Text, nullable=False)
+    job_title = Column(Text)
+    company = Column(Text)
+    location = Column(Text)
+    match_score = Column(Float)
+    missing_skills = Column(JSONB, nullable=False, default=list)
+    status = Column(Text, nullable=False, default="pending")
+    generated_id = Column(UUID(as_uuid=True))
+    error_message = Column(Text)
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+    completed_at = Column(TIMESTAMP(timezone=True))
+
+    __table_args__ = (Index("ix_job_match_tasks_batch_id", "batch_id"),)
+
+
+class JobGeneratedResume(Base):
+    __tablename__ = "job_generated_resumes"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    resume_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("resume_metadata.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    user_id = Column(Text, nullable=False)
+    job_id = Column(Text, nullable=False)
+    job_title = Column(Text)
+    company = Column(Text)
+    location = Column(Text)
+    match_score = Column(Float)
+    generated_data = Column(JSONB, nullable=False)
+    s3_key = Column(Text)
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+
+    __table_args__ = (Index("ix_job_generated_resumes_resume_id", "resume_id"),)
+
+
 class User(Base):
     __tablename__ = "users"
 

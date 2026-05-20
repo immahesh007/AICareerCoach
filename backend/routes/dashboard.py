@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.auth_dep import get_current_user_id
 from db.connection import get_db
 from db.repositories.ats_repo import get_evaluation, list_evaluations_by_resume
-from db.repositories.parsed_resume_repo import get_parsed_by_resume_id, upsert_parsed_data
+from db.repositories.parsed_resume_repo import get_parsed_by_resume_id, has_parsed_data, upsert_parsed_data
 from db.repositories.resume_repo import get_resume, list_resumes_with_latest_score
 from services.extraction_service import extract_text
 from services.llm_service import extract_resume_data
@@ -20,7 +20,7 @@ router = APIRouter(prefix="/resumes", tags=["dashboard"])
 PRESIGNED_URL_TTL = 900  # 15 minutes
 
 
-def _serialize_resume_row(row: dict) -> dict:
+def _serialize_resume_row(row: dict, has_parsed: bool) -> dict:
     return {
         "resume_id": str(row["resume_id"]),
         "original_filename": row.get("original_filename"),
@@ -29,6 +29,7 @@ def _serialize_resume_row(row: dict) -> dict:
         "latest_analysis_at": (
             row["latest_analysis_at"].isoformat() if row.get("latest_analysis_at") else None
         ),
+        "has_parsed_data": has_parsed,
     }
 
 
@@ -62,8 +63,11 @@ async def list_resumes(
     rows, total = await list_resumes_with_latest_score(
         db, user_id=current_user_id, limit=page_size, offset=offset
     )
+    parsed_ids = await has_parsed_data(
+        db, [r["resume_id"] for r in rows]
+    )
     return {
-        "items": [_serialize_resume_row(r) for r in rows],
+        "items": [_serialize_resume_row(r, r["resume_id"] in parsed_ids) for r in rows],
         "total": total,
         "page": page,
         "page_size": page_size,

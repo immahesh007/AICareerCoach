@@ -182,3 +182,72 @@ async def extract_resume_data(raw_text: str) -> dict:
     except json.JSONDecodeError:
         logger.warning("Ollama returned non-JSON output; returning empty dict. Raw: %.200s", raw)
         return {}
+
+
+_ENHANCE_SYSTEM = """You are an expert resume writer. Your task is to tailor a candidate's resume for a specific job.
+
+You receive:
+1. The candidate's parsed resume (JSON with summary, skills, experience, education)
+2. The job details (title, company, description)
+3. Missing skills that the candidate doesn't list but the job requires
+
+Instructions:
+- Rewrite the summary to naturally mention relevant missing skills and align with the job. Keep it 2-4 sentences.
+- Add missing skills to the skills array (only add skills that plausibly fit the candidate's background based on their experience).
+- Do NOT modify experience bullets — those must stay verbatim.
+- Keep the name, email, phone, linkedin, education, and all other fields unchanged.
+
+Return ONLY a valid JSON object with this exact structure (same as input, but with modified summary and skills):
+{
+  "name": "string",
+  "email": "string",
+  "phone": "string",
+  "linkedin": "string",
+  "summary": "rewritten summary",
+  "skills": ["skill1", "skill2", ...],
+  "experience": [...],
+  "education": [...],
+  "projects": [...],
+  "certifications": [...],
+  "total_years_experience": 0
+}
+
+No explanation. No markdown. No code fences. JSON only."""
+
+
+async def enhance_resume_for_job(
+    *,
+    resume_data: dict,
+    job_title: str,
+    company: str,
+    missing_skills: list[str],
+    job_description: str = "",
+) -> dict:
+    """Rewrite summary and add missing skills to tailor resume for a job."""
+    user_content = json.dumps({
+        "resume": resume_data,
+        "job": {"title": job_title, "company": company, "description": job_description},
+        "missing_skills": missing_skills,
+    })
+    response = await _client.chat(
+        model=settings.SUGGESTION_LLM_MODEL or settings.OLLAMA_MODEL,
+        format="json",
+        options={"temperature": 0.3},
+        messages=[
+            {"role": "system", "content": _ENHANCE_SYSTEM},
+            {"role": "user", "content": user_content},
+        ],
+    )
+    raw = response.message.content
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        logger.warning("LLM returned non-JSON for resume enhancement. Raw: %.200s", raw)
+        # Fall back: just add missing skills manually
+        enhanced = {**resume_data}
+        if "skills" in enhanced:
+            existing = set(s.lower() for s in enhanced.get("skills", []))
+            for skill in missing_skills:
+                if skill.lower() not in existing:
+                    enhanced["skills"] = enhanced.get("skills", []) + [skill]
+        return enhanced
