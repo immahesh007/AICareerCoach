@@ -4,6 +4,7 @@ export interface ResumeListItem {
   uploaded_at: string | null;
   latest_ats_score: number | null;
   latest_analysis_at: string | null;
+  has_parsed_data: boolean;
 }
 
 export interface ResumeListResponse {

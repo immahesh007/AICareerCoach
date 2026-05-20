@@ -11,6 +11,7 @@ interface Props {
   total: number;
   onPageChange: (page: number) => void;
   onAnalyzeMore: (resume: ResumeListItem) => void;
+  onFindMatchingJobs: (resume: ResumeListItem) => void;
 }
 
 function displayName(item: ResumeListItem): string {
@@ -39,6 +40,7 @@ export default function ResumeTable({
   total,
   onPageChange,
   onAnalyzeMore,
+  onFindMatchingJobs,
 }: Props) {
   const router = useRouter();
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
@@ -104,6 +106,17 @@ export default function ResumeTable({
                 <td className="px-6 py-4 text-indigo-200 text-sm">{formatDate(item.uploaded_at)}</td>
                 <td className="px-6 py-4">
                   <div className="flex items-center justify-end gap-2 flex-wrap">
+                    {item.has_parsed_data && (
+                      <button
+                        onClick={() => onFindMatchingJobs(item)}
+                        className="px-3 py-1.5 rounded-full bg-amber-500 hover:bg-amber-400 text-white text-xs font-semibold transition-colors inline-flex items-center gap-1"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3l14 9-14 9V3z" />
+                        </svg>
+                        Find Matching Jobs
+                      </button>
+                    )}
                     <button
                       onClick={() => handleViewResume(item)}
                       disabled={downloadingId === item.resume_id}
@@ -139,6 +152,17 @@ export default function ResumeTable({
                 <div className="text-indigo-200/70 text-xs mt-0.5">{formatDate(item.uploaded_at)}</div>
               </div>
               <div className="flex flex-wrap gap-2">
+                {item.has_parsed_data && (
+                  <button
+                    onClick={() => onFindMatchingJobs(item)}
+                    className="px-3 py-1.5 rounded-full bg-amber-500 hover:bg-amber-400 text-white text-xs font-semibold inline-flex items-center gap-1"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3l14 9-14 9V3z" />
+                    </svg>
+                    Find Matching Jobs
+                  </button>
+                )}
                 <button
                   onClick={() => handleViewResume(item)}
                   disabled={downloadingId === item.resume_id}

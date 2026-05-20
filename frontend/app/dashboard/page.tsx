@@ -65,6 +65,10 @@ function DashboardContent() {
     router.push(qs ? `/dashboard?${qs}` : '/dashboard');
   };
 
+  const handleFindMatchingJobs = (item: ResumeListItem) => {
+    router.push(`/resumes/${item.resume_id}/matching-jobs`);
+  };
+
   const handleAnalyzeSuccess = () => {
     setAnalyzeTarget(null);
     fetchResumes();
@@ -140,6 +144,7 @@ function DashboardContent() {
             total={data.total}
             onPageChange={handlePageChange}
             onAnalyzeMore={(item) => setAnalyzeTarget(item)}
+            onFindMatchingJobs={handleFindMatchingJobs}
           />
         )}
       </main>

@@ -9,6 +9,7 @@ import SaveResumeModal from './SaveResumeModal';
 import { useRouter } from 'next/navigation';
 import { getParsedResume, reparseResume } from '@/services/dashboardService';
 import { getSavedResume } from '@/services/savedResumesService';
+import { getGeneratedResume } from '@/services/jobMatchService';
 import { parsedToBuilder } from '@/utils/parsedToBuilder';
 import {
   SUGGESTION_HANDOFF_KEY,
@@ -213,9 +214,10 @@ export default function ResumeBuilderClient() {
   const [savedToast, setSavedToast] = useState<string | null>(null);
   const searchParams = useSearchParams();
   const savedResumeIdParam = searchParams?.get('saved_resume_id') ?? null;
-  const resumeIdParam = savedResumeIdParam ? null : (searchParams?.get('resume_id') ?? null);
+  const generatedIdParam = searchParams?.get('generated_id') ?? null;
+  const resumeIdParam = savedResumeIdParam || generatedIdParam ? null : (searchParams?.get('resume_id') ?? null);
   const [prefillState, setPrefillState] = useState<'idle' | 'loading' | 'success' | 'error'>(
-    resumeIdParam || savedResumeIdParam ? 'loading' : 'idle'
+    resumeIdParam || savedResumeIdParam || generatedIdParam ? 'loading' : 'idle'
   );
   const [prefillError, setPrefillError] = useState<string | null>(null);
   const [reparsing, setReparsing] = useState(false);
@@ -295,6 +297,31 @@ export default function ResumeBuilderClient() {
       cancelled = true;
     };
   }, [savedResumeIdParam]);
+
+  // Load from a job-generated resume (via matching-jobs flow)
+  useEffect(() => {
+    if (!generatedIdParam) return;
+    let cancelled = false;
+    setPrefillState('loading');
+    setPrefillError(null);
+    setEditingName(null);
+    getGeneratedResume(generatedIdParam)
+      .then(res => {
+        if (cancelled) return;
+        const base = parsedToBuilder(res.generated_data);
+        setData(base);
+        setEditingName(`${res.job_title ?? 'Job'} — ${res.company ?? 'Company'}`);
+        setPrefillState('success');
+      })
+      .catch(err => {
+        if (cancelled) return;
+        setPrefillError(err instanceof Error ? err.message : 'Could not load generated resume.');
+        setPrefillState('error');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [generatedIdParam]);
 
   useEffect(() => {
     if (!resumeIdParam) return;
@@ -489,9 +516,11 @@ export default function ResumeBuilderClient() {
             href={
               savedResumeIdParam
                 ? '/saved-resumes'
-                : resumeIdParam
-                  ? `/resumes/${resumeIdParam}/analyses`
-                  : '/dashboard'
+                : generatedIdParam
+                  ? '/dashboard'
+                  : resumeIdParam
+                    ? `/resumes/${resumeIdParam}/analyses`
+                    : '/dashboard'
             }
             className="inline-flex items-center gap-1.5 text-indigo-200 hover:text-white text-sm mb-4 transition-colors"
           >
@@ -500,9 +529,11 @@ export default function ResumeBuilderClient() {
             </svg>
             {savedResumeIdParam
               ? 'Back to saved resumes'
-              : resumeIdParam
-                ? 'Back to analysis history'
-                : 'Back to dashboard'}
+              : generatedIdParam
+                ? 'Back to dashboard'
+                : resumeIdParam
+                  ? 'Back to analysis history'
+                  : 'Back to dashboard'}
           </Link>
           <h1 className="text-2xl font-black text-white mb-1">Resume Builder</h1>
           <p className="text-indigo-300 text-sm mb-4">
@@ -515,7 +546,16 @@ export default function ResumeBuilderClient() {
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
               </svg>
-              {savedResumeIdParam ? 'Loading saved resume…' : 'Prefilling from your uploaded resume…'}
+              {savedResumeIdParam
+                ? 'Loading saved resume…'
+                : generatedIdParam
+                  ? 'Loading generated resume…'
+                  : 'Prefilling from your uploaded resume…'}
+            </div>
+          )}
+          {prefillState === 'success' && generatedIdParam && (
+            <div className="mb-6 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+              AI-enhanced resume for {editingName || 'this job'}. Review and edit before saving. Missing skills have been incorporated into the summary and skills list.
             </div>
           )}
           {prefillState === 'success' && savedResumeIdParam && (

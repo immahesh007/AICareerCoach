@@ -51,6 +51,23 @@ async def get_parsed_by_resume_id(
     return result.scalar_one_or_none()
 
 
+async def has_parsed_data(
+    db: AsyncSession,
+    resume_ids: list[uuid.UUID],
+) -> set[uuid.UUID]:
+    """Return the subset of resume_ids that have a parsed_resumes row."""
+    from sqlalchemy import select
+
+    from db.models import ParsedResume
+
+    if not resume_ids:
+        return set()
+    result = await db.execute(
+        select(ParsedResume.resume_id).where(ParsedResume.resume_id.in_(resume_ids))
+    )
+    return {row[0] for row in result.all()}
+
+
 async def upsert_parsed_data(
     db: AsyncSession,
     *,

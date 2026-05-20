@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRE_MINUTES: int = 1440  # 24 hours
     RESUME_BUILDER_SERVICE_URL: str = "http://localhost:8080"
+    JOB_MATCH_SERVICE_URL: str = "http://localhost:8081"
 
 
 settings = Settings()
