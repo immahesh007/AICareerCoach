@@ -35,6 +35,7 @@ export interface ProjectItem {
   description: string;
   tech: string;
   date: string;
+  bullets: string[];
 }
 
 export interface PublicationItem {

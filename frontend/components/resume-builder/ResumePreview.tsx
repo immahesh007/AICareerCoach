@@ -229,13 +229,28 @@ function buildBlocks(data: ResumeData, S: ReturnType<typeof getS>): Block[] {
         key: `proj-${i}`,
         el: (
           <BulletRow styles={S}>
-            <span>
-              <strong>{proj?.name ?? ''}</strong>
-              {proj?.tags ? ` (${proj.tags})` : ''}
-              {proj?.description ? `: ${proj.description}` : ''}
-              {proj?.tech ? ` Tech: ${proj.tech}` : ''}
-              {proj?.date ? ` (${proj.date})` : ''}
-            </span>
+            <div>
+              <div>
+                <strong>{proj?.name ?? ''}</strong>
+                {proj?.tags ? ` (${proj.tags})` : ''}
+                {proj?.description ? `: ${proj.description}` : ''}
+                {proj?.tech ? ` Tech: ${proj.tech}` : ''}
+                {proj?.date ? ` (${proj.date})` : ''}
+              </div>
+              {proj?.bullets?.filter(b => b.trim()).map((b, bi) => (
+                <div key={bi} style={S.subBulletWrap}>
+                  <span style={S.subBullet}>○</span>
+                  <span style={{ flex: 1 }}>
+                    {b.includes(': ') ? (
+                      <>
+                        <strong>{b.split(': ')[0]}</strong>
+                        {': '}{b.split(': ').slice(1).join(': ')}
+                      </>
+                    ) : b}
+                  </span>
+                </div>
+              ))}
+            </div>
           </BulletRow>
         ),
       });
@@ -473,9 +488,11 @@ export default function ResumePreview({
             }}
           >
             <div style={S.page}>
-              {pageBlockIdxs.map(idx => (
-                <div key={blocks[idx].key}>{blocks[idx].el}</div>
-              ))}
+              {pageBlockIdxs.map(idx => {
+                const block = blocks[idx];
+                if (!block) return null;
+                return <div key={block.key}>{block.el}</div>;
+              })}
             </div>
           </div>
         ))}

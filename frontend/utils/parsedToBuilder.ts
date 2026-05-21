@@ -52,7 +52,7 @@ const EMPTY_EDU: EducationItem = {
 const EMPTY_EXP: ExperienceItem = {
   company: '', location: '', title: '', duration: '', bullets: [''],
 };
-const EMPTY_PROJECT: ProjectItem = { name: '', tags: '', description: '', tech: '', date: '' };
+const EMPTY_PROJECT: ProjectItem = { name: '', tags: '', description: '', tech: '', date: '', bullets: [] };
 const EMPTY_PUB: PublicationItem = {
   prefix: 'Book', title: '', tags: '', description: '', tech: '', date: '',
 };
