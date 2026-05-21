@@ -222,6 +222,104 @@ Return ONLY a valid JSON object with this exact structure (same as input, but wi
 No explanation. No markdown. No code fences. JSON only."""
 
 
+_SUGGEST_SYSTEM = """You are an expert resume editor and ATS optimization specialist.
+
+You receive a full resume as JSON and return improvement suggestions for specific sections.
+
+Instructions per section:
+
+1. **summary**: Rewrite for spelling, grammar, sentence structure, and ATS impact. Use strong action verbs. Keep 2-4 sentences.
+
+2. **experience**: For each bullet point, rewrite to improve ATS score:
+   - Start with strong action verbs (Led, Architected, Optimized, Designed, etc.)
+   - Include quantifiable metrics where the original implies them (add [X]% or [N] placeholders when metrics are missing but clearly implied)
+   - Fix spelling, grammar, and sentence structure
+   - Keep the original meaning and technical details intact
+   - Return the original text and the suggested rewrite for each bullet
+
+3. **projects**: For each project, suggest improvements for description and tech fields:
+   - description: Make more impactful with action verbs and metrics
+   - tech: Normalize tech stack formatting (consistent capitalization, standard tool names)
+
+4. **awards**: For each award, suggest improvements for name and date:
+   - name: Fix spelling, grammar, formatting
+   - date: Normalize to "Month Year" format (e.g., "May 2023")
+
+5. **volunteer**: For each volunteer role, suggest improvements for description:
+   - Make more impactful, similar to experience bullets
+
+6. **skills**: Identify skills in the experience/projects sections that should be in the Skills section but aren't, or skills in the wrong category. Return reclassifications.
+
+IMPORTANT RULES:
+- Only suggest changes where there is a meaningful improvement to make. If text is already good, omit it.
+- NEVER invent content — only rephrase existing content. The only exception is suggesting [X] or [N] placeholders for metrics.
+- Normalize ALL dates to "Mon Year" format (e.g., "Jan 2022", "March 2023").
+- Keep all technical terms, tools, and proper nouns exactly as written (fix only casing if wrong).
+- Do not return suggestions for empty fields.
+
+Return ONLY a valid JSON object with this structure:
+{
+  "summary": {"original": "...", "suggested": "..."} | null,
+  "experience": [
+    {
+      "exp_index": 0,
+      "bullets": [{"bullet_index": 0, "original": "...", "suggested": "..."}]
+    }
+  ],
+  "projects": [
+    {
+      "proj_index": 0,
+      "description": {"original": "...", "suggested": "..."} | null,
+      "tech": {"original": "...", "suggested": "..."} | null
+    }
+  ],
+  "awards": [
+    {
+      "award_index": 0,
+      "name": {"original": "...", "suggested": "..."} | null,
+      "date": {"original": "...", "suggested": "..."} | null
+    }
+  ],
+  "volunteer": [
+    {
+      "vol_index": 0,
+      "description": {"original": "...", "suggested": "..."} | null
+    }
+  ],
+  "skills": {
+    "reclassifications": [
+      {"skill": "Python", "from_category": "Tools & Platforms", "to_category": "Languages"}
+    ]
+  }
+}
+
+No explanation. No markdown. No code fences. JSON only."""
+
+
+async def suggest_resume_improvements(resume_data: dict) -> dict:
+    """Generate AI suggestions for improving resume text across all sections."""
+    user_content = json.dumps(resume_data, ensure_ascii=False)
+    response = await _client.chat(
+        model=settings.OLLAMA_MODEL,
+        format="json",
+        options={
+            "num_ctx": 8192,
+            "num_predict": 4096,
+            "temperature": 0.2,
+        },
+        messages=[
+            {"role": "system", "content": _SUGGEST_SYSTEM},
+            {"role": "user", "content": f"Suggest improvements for this resume:\n\n{user_content}"},
+        ],
+    )
+    raw = response.message.content
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        logger.warning("LLM returned non-JSON for resume suggestions. Raw: %.200s", raw)
+        return {}
+
+
 async def enhance_resume_for_job(
     *,
     resume_data: dict,

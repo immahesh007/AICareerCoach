@@ -127,6 +127,56 @@ export const SPACING_MAP: Record<SpacingMode, { lineHeight: string; sectionGap: 
   compact: { lineHeight: '1.25', sectionGap: 5, itemGap: 2 },
 };
 
+// ── AI Suggestions ────────────────────────────────────────────────────────────
+
+export interface SuggestionItem {
+  original: string;
+  suggested: string;
+}
+
+export interface ExperienceSuggestion {
+  exp_index: number;
+  bullets: Array<{
+    bullet_index: number;
+    original: string;
+    suggested: string;
+  }>;
+}
+
+export interface ProjectSuggestion {
+  proj_index: number;
+  description?: SuggestionItem;
+  tech?: SuggestionItem;
+}
+
+export interface AwardSuggestion {
+  award_index: number;
+  name?: SuggestionItem;
+  date?: SuggestionItem;
+}
+
+export interface VolunteerSuggestion {
+  vol_index: number;
+  description: SuggestionItem;
+}
+
+export interface SkillReclassification {
+  skill: string;
+  from_category: string;
+  to_category: string;
+}
+
+export interface ResumeSuggestions {
+  summary?: SuggestionItem | null;
+  experience?: ExperienceSuggestion[];
+  projects?: ProjectSuggestion[];
+  awards?: AwardSuggestion[];
+  volunteer?: VolunteerSuggestion[];
+  skills?: {
+    reclassifications: SkillReclassification[];
+  };
+}
+
 // Legacy — kept for backward compat with old backend route
 export interface SkillLevel {
   emoji: string;

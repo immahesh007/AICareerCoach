@@ -1,4 +1,4 @@
-import type { GenerateResponse, ResumeData, ResumeDesignSettings } from '@/types/resume';
+import type { GenerateResponse, ResumeData, ResumeDesignSettings, ResumeSuggestions } from '@/types/resume';
 import { DEFAULT_DESIGN_SETTINGS, FONT_SIZE_MAP, FONT_FAMILY_MAP } from '@/types/resume';
 
 export async function generatePDF(
@@ -31,4 +31,28 @@ export async function generatePDF(
   }
 
   return res.json() as Promise<GenerateResponse>;
+}
+
+export async function generateSuggestions(
+  data: ResumeData,
+  userId?: string,
+  token?: string,
+): Promise<ResumeSuggestions> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (userId) headers['X-User-Id'] = userId;
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const res = await fetch('/api/resume-builder/suggestions', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error((body as { detail?: string }).detail ?? 'Suggestion generation failed');
+  }
+
+  const json = await res.json();
+  return json.suggestions as ResumeSuggestions;
 }

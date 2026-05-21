@@ -10,6 +10,7 @@ import { useRouter } from 'next/navigation';
 import { getParsedResume, reparseResume } from '@/services/dashboardService';
 import { getSavedResume } from '@/services/savedResumesService';
 import { getGeneratedResume } from '@/services/jobMatchService';
+import { generateSuggestions } from '@/services/resumeBuilderService';
 import { parsedToBuilder, classifySkill } from '@/utils/parsedToBuilder';
 import {
   SUGGESTION_HANDOFF_KEY,
@@ -32,6 +33,7 @@ import type {
   SpacingMode,
   VolunteerItem,
 } from '@/types/resume';
+import type { ResumeSuggestions } from '@/types/resume';
 import { DEFAULT_DESIGN_SETTINGS, FONT_FAMILY_MAP } from '@/types/resume';
 
 function readHandoff(resumeId: string): ApprovedSuggestionsHandoff | null {
@@ -228,6 +230,132 @@ function normalizeResumeData(partial: Partial<ResumeData> | null | undefined): R
   };
 }
 
+// ── suggestions helpers ────────────────────────────────────────────────────
+
+function simpleHash(str: string): string {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash) + str.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash).toString(36);
+}
+
+const SUGGESTIONS_CACHE_PREFIX = 'rb_suggestions_';
+
+function getSuggestionsCacheKey(data: ResumeData): string {
+  return SUGGESTIONS_CACHE_PREFIX + simpleHash(JSON.stringify(data));
+}
+
+function loadCachedSuggestions(data: ResumeData): ResumeSuggestions | null {
+  try {
+    const raw = localStorage.getItem(getSuggestionsCacheKey(data));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return null;
+    return parsed as ResumeSuggestions;
+  } catch {
+    return null;
+  }
+}
+
+function cacheSuggestions(data: ResumeData, s: ResumeSuggestions): void {
+  try {
+    localStorage.setItem(getSuggestionsCacheKey(data), JSON.stringify(s));
+  } catch { /* quota exceeded or localStorage disabled */ }
+}
+
+function matchingKeys(data: ResumeData, s: ResumeSuggestions | null): Set<string> {
+  const keys = new Set<string>();
+  if (!s) return keys;
+
+  if (s.summary && data.summary === s.summary.original) keys.add('summary');
+
+  if (s.experience) {
+    for (const es of s.experience) {
+      const exp = data.experience[es.exp_index];
+      if (!exp) continue;
+      for (const b of es.bullets) {
+        if (exp.bullets[b.bullet_index] === b.original) {
+          keys.add(`exp_${es.exp_index}_b_${b.bullet_index}`);
+        }
+      }
+    }
+  }
+
+  if (s.projects) {
+    for (const ps of s.projects) {
+      const proj = data.projects[ps.proj_index];
+      if (!proj) continue;
+      if (ps.description && proj.description === ps.description.original) keys.add(`proj_${ps.proj_index}_desc`);
+      if (ps.tech && proj.tech === ps.tech.original) keys.add(`proj_${ps.proj_index}_tech`);
+    }
+  }
+
+  if (s.awards) {
+    for (const aw of s.awards) {
+      const award = data.awards[aw.award_index];
+      if (!award) continue;
+      if (aw.name && award.name === aw.name.original) keys.add(`award_${aw.award_index}_name`);
+      if (aw.date && award.date === aw.date.original) keys.add(`award_${aw.award_index}_date`);
+    }
+  }
+
+  if (s.volunteer) {
+    for (const vs of s.volunteer) {
+      const vol = data.volunteer[vs.vol_index];
+      if (!vol) continue;
+      if (vol.description === vs.description.original) keys.add(`vol_${vs.vol_index}_desc`);
+    }
+  }
+
+  return keys;
+}
+
+function suggestionCount(s: ResumeSuggestions | null): number {
+  if (!s) return 0;
+  let n = s.summary ? 1 : 0;
+  if (s.experience) for (const es of s.experience) n += es.bullets.length;
+  if (s.projects) for (const ps of s.projects) n += (ps.description ? 1 : 0) + (ps.tech ? 1 : 0);
+  if (s.awards) for (const aw of s.awards) n += (aw.name ? 1 : 0) + (aw.date ? 1 : 0);
+  if (s.volunteer) for (const vs of s.volunteer) n += 1;
+  if (s.skills?.reclassifications) n += s.skills.reclassifications.length;
+  return n;
+}
+
+function SuggestionCard({
+  original, suggested, onReplace, onRevert, onDismiss, applied,
+}: {
+  original: string; suggested: string; onReplace: () => void;
+  onRevert: () => void; onDismiss: () => void; applied: boolean;
+}) {
+  return (
+    <div className="mt-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs font-semibold text-amber-300">✨ Suggestion</span>
+        <button onClick={onDismiss} className="text-white/30 hover:text-white/60 text-sm leading-none px-1">×</button>
+      </div>
+      <div className="text-xs text-white/40 mb-1">Original</div>
+      <div className="text-xs text-white/60 mb-3 bg-white/5 rounded p-2 whitespace-pre-wrap">{original}</div>
+      <div className="text-xs text-emerald-300/80 mb-1">Suggested</div>
+      <div className="text-sm text-white/90 mb-3 bg-emerald-500/5 rounded p-2 whitespace-pre-wrap">{suggested}</div>
+      <div className="flex items-center gap-2">
+        {applied ? (
+          <button onClick={onRevert}
+            className="px-3 py-1 rounded-full bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-colors">
+            Revert
+          </button>
+        ) : (
+          <button onClick={onReplace}
+            className="px-3 py-1 rounded-full bg-amber-600/80 hover:bg-amber-500 text-white text-xs font-semibold transition-colors">
+            Replace
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── main component ───────────────────────────────────────────────────────────
 
 export default function ResumeBuilderClient() {
@@ -260,6 +388,164 @@ export default function ResumeBuilderClient() {
     volunteer: true,
   });
   const toggleSection = (key: string) => setSections(prev => ({ ...prev, [key]: !prev[key] }));
+
+  // ── AI suggestions ───────────────────────────────────────────────────────
+  const [suggestions, setSuggestions] = useState<ResumeSuggestions | null>(null);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  const [suggestionsError, setSuggestionsError] = useState<string | null>(null);
+  const [appliedSuggestKeys, setAppliedSuggestKeys] = useState<Set<string>>(new Set());
+  const [dismissedSuggestKeys, setDismissedSuggestKeys] = useState<Set<string>>(new Set());
+
+  const stableMatchingKeys = matchingKeys(data, suggestions);
+  // A suggestion is visible if: it has been applied (so user can revert), OR
+  // its field still matches the original text AND it hasn't been dismissed.
+  const isSuggestionVisible = (key: string) =>
+    appliedSuggestKeys.has(key) || (stableMatchingKeys.has(key) && !dismissedSuggestKeys.has(key));
+  const isSuggestionApplied = (key: string) => appliedSuggestKeys.has(key);
+
+  const handleGenerateSuggestions = useCallback(async () => {
+    // Check cache first
+    const cached = loadCachedSuggestions(data);
+    if (cached && suggestionCount(cached) > 0) {
+      setSuggestions(cached);
+      setAppliedSuggestKeys(new Set());
+      setDismissedSuggestKeys(new Set());
+      return;
+    }
+
+    setSuggestionsLoading(true);
+    setSuggestionsError(null);
+    const guestId = typeof window !== 'undefined' ? localStorage.getItem('guest_id') ?? undefined : undefined;
+    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') ?? undefined : undefined;
+    try {
+      const result = await generateSuggestions(data, guestId, token ?? undefined);
+      setSuggestions(result);
+      setAppliedSuggestKeys(new Set());
+      setDismissedSuggestKeys(new Set());
+      cacheSuggestions(data, result);
+    } catch (err) {
+      setSuggestionsError(err instanceof Error ? err.message : 'Failed to generate suggestions');
+    } finally {
+      setSuggestionsLoading(false);
+    }
+  }, [data]);
+
+  const handleReplaceAll = useCallback(() => {
+    if (!suggestions) return;
+    setData(prev => {
+      let next = { ...prev };
+
+      // Summary
+      if (suggestions.summary) next.summary = suggestions.summary.suggested;
+
+      // Experience bullets
+      if (suggestions.experience) {
+        const exp = next.experience.map(e => ({ ...e, bullets: [...e.bullets] }));
+        for (const es of suggestions.experience) {
+          for (const b of es.bullets) {
+            exp[es.exp_index].bullets[b.bullet_index] = b.suggested;
+          }
+        }
+        next.experience = exp;
+      }
+
+      // Projects
+      if (suggestions.projects) {
+        const projs = next.projects.map(p => ({ ...p }));
+        for (const ps of suggestions.projects) {
+          if (ps.description) projs[ps.proj_index].description = ps.description.suggested;
+          if (ps.tech) projs[ps.proj_index].tech = ps.tech.suggested;
+        }
+        next.projects = projs;
+      }
+
+      // Awards
+      if (suggestions.awards) {
+        const awards = next.awards.map(a => ({ ...a }));
+        for (const aw of suggestions.awards) {
+          if (aw.name) awards[aw.award_index].name = aw.name.suggested;
+          if (aw.date) awards[aw.award_index].date = aw.date.suggested;
+        }
+        next.awards = awards;
+      }
+
+      // Volunteer
+      if (suggestions.volunteer) {
+        const vol = next.volunteer.map(v => ({ ...v }));
+        for (const vs of suggestions.volunteer) {
+          vol[vs.vol_index].description = vs.description.suggested;
+        }
+        next.volunteer = vol;
+      }
+
+      // Skills reclassifications
+      if (suggestions.skills?.reclassifications) {
+        next = applySkillReclassifications(next, suggestions.skills.reclassifications);
+      }
+
+      return next;
+    });
+
+    // Mark all as applied
+    const allKeys = new Set<string>();
+    if (suggestions.summary) allKeys.add('summary');
+    if (suggestions.experience) {
+      for (const es of suggestions.experience)
+        for (const b of es.bullets) allKeys.add(`exp_${es.exp_index}_b_${b.bullet_index}`);
+    }
+    if (suggestions.projects) {
+      for (const ps of suggestions.projects) {
+        if (ps.description) allKeys.add(`proj_${ps.proj_index}_desc`);
+        if (ps.tech) allKeys.add(`proj_${ps.proj_index}_tech`);
+      }
+    }
+    if (suggestions.awards) {
+      for (const aw of suggestions.awards) {
+        if (aw.name) allKeys.add(`award_${aw.award_index}_name`);
+        if (aw.date) allKeys.add(`award_${aw.award_index}_date`);
+      }
+    }
+    if (suggestions.volunteer) {
+      for (const vs of suggestions.volunteer) allKeys.add(`vol_${vs.vol_index}_desc`);
+    }
+    setAppliedSuggestKeys(allKeys);
+  }, [suggestions]);
+
+  const dismissKey = useCallback((key: string) => {
+    setDismissedSuggestKeys(prev => { const n = new Set(prev); n.add(key); return n; });
+  }, []);
+
+  const applyKey = useCallback((key: string) => {
+    setAppliedSuggestKeys(prev => { const n = new Set(prev); n.add(key); return n; });
+  }, []);
+
+  function applySkillReclassifications(d: ResumeData, reclass: Array<{skill: string; from_category: string; to_category: string}>): ResumeData {
+    const categories = d.skillCategories.map(s => ({ ...s }));
+    for (const r of reclass) {
+      // Remove from source category
+      for (const cat of categories) {
+        if (cat.category === r.from_category) {
+          const items = cat.items.split(',').map(s => s.trim()).filter(Boolean);
+          const idx = items.findIndex(s => s.toLowerCase() === r.skill.toLowerCase());
+          if (idx >= 0) {
+            items.splice(idx, 1);
+            cat.items = items.join(', ');
+          }
+        }
+      }
+      // Add to target category
+      for (const cat of categories) {
+        if (cat.category === r.to_category) {
+          const items = cat.items.split(',').map(s => s.trim()).filter(Boolean);
+          if (!items.some(s => s.toLowerCase() === r.skill.toLowerCase())) {
+            items.push(r.skill);
+            cat.items = items.join(', ');
+          }
+        }
+      }
+    }
+    return { ...d, skillCategories: categories };
+  }
 
   // ── adjustable split ──────────────────────────────────────────────────────
   const [leftWidth, setLeftWidth] = useState(40); // default 40:60
@@ -620,6 +906,64 @@ export default function ResumeBuilderClient() {
             </div>
           )}
 
+          {/* ── AI Suggestions Toolbar ──────────────────────────────────── */}
+          <div className="mb-6">
+            {!suggestions ? (
+              <button
+                onClick={handleGenerateSuggestions}
+                disabled={suggestionsLoading}
+                className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-full bg-amber-600/80 hover:bg-amber-500 disabled:opacity-50 text-white text-sm font-semibold transition-colors"
+              >
+                {suggestionsLoading ? (
+                  <>
+                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    Generating AI suggestions…
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                        d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    ✨ AI Suggestions
+                  </>
+                )}
+              </button>
+            ) : (
+              <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2">
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <span className="text-xs text-amber-200">
+                    {suggestionCount(suggestions)} suggestion{suggestionCount(suggestions) === 1 ? '' : 's'} available
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleReplaceAll}
+                      className="px-3 py-1 rounded-full bg-amber-600/80 hover:bg-amber-500 text-white text-xs font-semibold transition-colors"
+                    >
+                      Apply All
+                    </button>
+                    <button
+                      onClick={handleGenerateSuggestions}
+                      disabled={suggestionsLoading}
+                      className="px-3 py-1 rounded-full bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-colors"
+                    >
+                      {suggestionsLoading ? 'Regenerating…' : 'Regenerate'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+            {suggestionsError && (
+              <div className="mt-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-200">
+                {suggestionsError}
+                <button onClick={handleGenerateSuggestions} className="ml-2 underline hover:text-red-100">Retry</button>
+              </div>
+            )}
+          </div>
+
           {/* DESIGN SETTINGS */}
           <CollapsibleSection title="Design Settings" open={sections.design} onToggle={() => toggleSection('design')}>
             <div className={cardCls}>
@@ -753,6 +1097,22 @@ export default function ResumeBuilderClient() {
               onChange={e => setData(d => ({ ...d, summary: e.target.value }))}
               placeholder="2 to 4 sentences describing your experience and what you bring to the role…"
             />
+            {suggestions?.summary && isSuggestionVisible('summary') && (
+              <SuggestionCard
+                original={suggestions.summary.original}
+                suggested={suggestions.summary.suggested}
+                applied={isSuggestionApplied('summary')}
+                onReplace={() => {
+                  setData(d => ({ ...d, summary: suggestions.summary!.suggested }));
+                  applyKey('summary');
+                }}
+                onRevert={() => {
+                  setData(d => ({ ...d, summary: suggestions.summary!.original }));
+                  setAppliedSuggestKeys(prev => { const n = new Set(prev); n.delete('summary'); return n; });
+                }}
+                onDismiss={() => dismissKey('summary')}
+              />
+            )}
           </CollapsibleSection>
 
           {/* SKILLS SUMMARY */}
@@ -778,12 +1138,82 @@ export default function ResumeBuilderClient() {
                 </div>
               ))}
             </div>
+            {/* Skill reclassification suggestions */}
+            {suggestions?.skills?.reclassifications && suggestions.skills.reclassifications.length > 0 && (
+              <div className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-semibold text-amber-300">
+                    Skill reclassifications ({suggestions.skills.reclassifications.length})
+                  </span>
+                  <button
+                    onClick={() => {
+                      setData(d => applySkillReclassifications(d, suggestions.skills!.reclassifications));
+                      setDismissedSuggestKeys(prev => {
+                        const n = new Set(prev);
+                        n.add('skills_reclass');
+                        return n;
+                      });
+                    }}
+                    className="px-2.5 py-1 rounded-full bg-amber-600/80 hover:bg-amber-500 text-white text-xs font-semibold transition-colors"
+                  >
+                    Apply all
+                  </button>
+                </div>
+                <div className="space-y-1.5">
+                  {suggestions.skills.reclassifications.map((r, ri) => (
+                    <div key={ri} className="flex items-center gap-2 text-xs text-white/80">
+                      <span className="text-amber-300">→</span>
+                      Move <span className="text-white font-medium">{r.skill}</span>
+                      from <span className="text-white/50">{r.from_category}</span>
+                      to <span className="text-emerald-300">{r.to_category}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </CollapsibleSection>
 
           {/* EXPERIENCE */}
           <CollapsibleSection title="Experience" open={sections.experience} onToggle={() => toggleSection('experience')}>
+            {/* Per-section apply-all for experience */}
+            {suggestions?.experience && suggestions.experience.length > 0 && (
+              <div className="mb-3 flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    setData(d => {
+                      const exp = d.experience.map(e => ({ ...e, bullets: [...e.bullets] }));
+                      for (const es of suggestions.experience!) {
+                        for (const b of es.bullets) {
+                          exp[es.exp_index].bullets[b.bullet_index] = b.suggested;
+                        }
+                      }
+                      return { ...d, experience: exp };
+                    });
+                    const keys = new Set<string>();
+                    for (const es of suggestions.experience!)
+                      for (const b of es.bullets) keys.add(`exp_${es.exp_index}_b_${b.bullet_index}`);
+                    setAppliedSuggestKeys(prev => { const n = new Set(prev); keys.forEach(k => n.add(k)); return n; });
+                  }}
+                  className="px-2.5 py-1 rounded-full bg-amber-600/80 hover:bg-amber-500 text-white text-xs font-semibold transition-colors"
+                >
+                  Apply all experience suggestions
+                </button>
+              </div>
+            )}
             <div className="space-y-4">
-              {data.experience.map((exp, i) => (
+              {data.experience.map((exp, i) => {
+                // Collect bullet suggestion keys for this position
+                const posBulletSuggestKeys: string[] = [];
+                if (suggestions?.experience) {
+                  const es = suggestions.experience.find(e => e.exp_index === i);
+                  if (es) {
+                    for (const b of es.bullets) {
+                      const key = `exp_${i}_b_${b.bullet_index}`;
+                      if (isSuggestionVisible(key)) posBulletSuggestKeys.push(key);
+                    }
+                  }
+                }
+                return (
                 <div key={i} className={cardCls}>
                   <div className="flex justify-between items-center mb-3">
                     <span className="text-xs text-indigo-300 font-semibold">Position {i + 1}</span>
@@ -805,35 +1235,104 @@ export default function ResumeBuilderClient() {
                     Bullet Points <span className="text-white/30">(use "Title: detail" for bold prefix)</span>
                   </label>
                   <div className="space-y-2">
-                    {exp.bullets.map((b, bi) => (
-                      <div key={bi} className="flex gap-2 items-start">
-                        <span className="text-white/40 text-sm mt-2 select-none">○</span>
-                        <input
-                          className={inputCls}
-                          value={b}
-                          onChange={e => setBullet(i, bi, e.target.value)}
-                          placeholder="Feature Name: Brief description of what you built or improved…"
-                        />
-                        {exp.bullets.length > 1 && (
-                          <button onClick={() => removeBullet(i, bi)}
-                            className="shrink-0 text-red-400 hover:text-red-300 text-lg leading-none mt-1.5 px-1">
-                            ×
+                    {exp.bullets.map((b, bi) => {
+                      const bKey = `exp_${i}_b_${bi}`;
+                      const esForBullet = suggestions?.experience
+                        ?.find(e => e.exp_index === i)
+                        ?.bullets.find(bu => bu.bullet_index === bi);
+                      const showSuggestion = esForBullet && isSuggestionVisible(bKey);
+                      return (
+                      <div key={bi}>
+                        <div className="flex gap-2 items-start">
+                          <button
+                            onClick={() => {
+                              if (showSuggestion) {
+                                if (isSuggestionApplied(bKey)) {
+                                  setAppliedSuggestKeys(prev => { const n = new Set(prev); n.delete(bKey); return n; });
+                                } else {
+                                  dismissKey(bKey);
+                                }
+                              }
+                            }}
+                            className="text-white/40 text-sm mt-2 select-none shrink-0"
+                          >
+                            {showSuggestion ? (isSuggestionApplied(bKey) ? '✓' : '✧') : '○'}
                           </button>
+                          <input
+                            className={inputCls}
+                            value={b}
+                            onChange={e => setBullet(i, bi, e.target.value)}
+                            placeholder="Feature Name: Brief description of what you built or improved…"
+                          />
+                          {exp.bullets.length > 1 && (
+                            <button onClick={() => removeBullet(i, bi)}
+                              className="shrink-0 text-red-400 hover:text-red-300 text-lg leading-none mt-1.5 px-1">
+                              ×
+                            </button>
+                          )}
+                        </div>
+                        {showSuggestion && (
+                          <SuggestionCard
+                            original={esForBullet!.original}
+                            suggested={esForBullet!.suggested}
+                            applied={isSuggestionApplied(bKey)}
+                            onReplace={() => {
+                              setBullet(i, bi, esForBullet!.suggested);
+                              applyKey(bKey);
+                            }}
+                            onRevert={() => {
+                              setBullet(i, bi, esForBullet!.original);
+                              setAppliedSuggestKeys(prev => { const n = new Set(prev); n.delete(bKey); return n; });
+                            }}
+                            onDismiss={() => dismissKey(bKey)}
+                          />
                         )}
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                   <AddButton onClick={() => addBullet(i)} label="Add Bullet" />
                 </div>
-              ))}
+                );
+              })}
             </div>
             <AddButton onClick={addExp} label="Add Position" />
           </CollapsibleSection>
 
           {/* PROJECTS */}
           <CollapsibleSection title="Projects" open={sections.projects} onToggle={() => toggleSection('projects')}>
+            {/* Per-section apply-all */}
+            {suggestions?.projects && suggestions.projects.length > 0 && (
+              <div className="mb-3 flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    setData(d => {
+                      const projs = d.projects.map(p => ({ ...p }));
+                      for (const ps of suggestions.projects!) {
+                        if (ps.description) projs[ps.proj_index].description = ps.description.suggested;
+                        if (ps.tech) projs[ps.proj_index].tech = ps.tech.suggested;
+                      }
+                      return { ...d, projects: projs };
+                    });
+                    const keys = new Set<string>();
+                    for (const ps of suggestions.projects!) {
+                      if (ps.description) keys.add(`proj_${ps.proj_index}_desc`);
+                      if (ps.tech) keys.add(`proj_${ps.proj_index}_tech`);
+                    }
+                    setAppliedSuggestKeys(prev => { const n = new Set(prev); keys.forEach(k => n.add(k)); return n; });
+                  }}
+                  className="px-2.5 py-1 rounded-full bg-amber-600/80 hover:bg-amber-500 text-white text-xs font-semibold transition-colors"
+                >
+                  Apply all project suggestions
+                </button>
+              </div>
+            )}
             <div className="space-y-4">
-              {(data.projects ?? []).map((proj, i) => (
+              {(data.projects ?? []).map((proj, i) => {
+                const psForProj = suggestions?.projects?.find(p => p.proj_index === i);
+                const descKey = `proj_${i}_desc`;
+                const techKey = `proj_${i}_tech`;
+                return (
                 <div key={i} className={cardCls}>
                   <div className="flex justify-between items-center mb-3">
                     <span className="text-xs text-indigo-300 font-semibold">Project {i + 1}</span>
@@ -848,18 +1347,43 @@ export default function ResumeBuilderClient() {
                     <Field label="Tags / Keywords" value={proj?.tags ?? ''}
                       onChange={v => setProject(i, 'tags', v)}
                       placeholder="Machine Learning, Web App, Open Source" fullWidth />
-                    <Field label="Description" value={proj?.description ?? ''}
-                      onChange={v => setProject(i, 'description', v)}
-                      placeholder="Brief description of what the project does and its impact…"
-                      fullWidth textarea rows={2} />
-                    <Field label="Tech Stack" value={proj?.tech ?? ''}
-                      onChange={v => setProject(i, 'tech', v)}
-                      placeholder="Python, React, PostgreSQL, Docker" />
+                    <div>
+                      <Field label="Description" value={proj?.description ?? ''}
+                        onChange={v => setProject(i, 'description', v)}
+                        placeholder="Brief description of what the project does and its impact…"
+                        fullWidth textarea rows={2} />
+                      {psForProj?.description && isSuggestionVisible(descKey) && (
+                        <SuggestionCard
+                          original={psForProj.description.original}
+                          suggested={psForProj.description.suggested}
+                          applied={isSuggestionApplied(descKey)}
+                          onReplace={() => { setProject(i, 'description', psForProj.description!.suggested); applyKey(descKey); }}
+                          onRevert={() => { setProject(i, 'description', psForProj.description!.original); setAppliedSuggestKeys(prev => { const n = new Set(prev); n.delete(descKey); return n; }); }}
+                          onDismiss={() => dismissKey(descKey)}
+                        />
+                      )}
+                    </div>
+                    <div>
+                      <Field label="Tech Stack" value={proj?.tech ?? ''}
+                        onChange={v => setProject(i, 'tech', v)}
+                        placeholder="Python, React, PostgreSQL, Docker" />
+                      {psForProj?.tech && isSuggestionVisible(techKey) && (
+                        <SuggestionCard
+                          original={psForProj.tech.original}
+                          suggested={psForProj.tech.suggested}
+                          applied={isSuggestionApplied(techKey)}
+                          onReplace={() => { setProject(i, 'tech', psForProj.tech!.suggested); applyKey(techKey); }}
+                          onRevert={() => { setProject(i, 'tech', psForProj.tech!.original); setAppliedSuggestKeys(prev => { const n = new Set(prev); n.delete(techKey); return n; }); }}
+                          onDismiss={() => dismissKey(techKey)}
+                        />
+                      )}
+                    </div>
                     <Field label="Date" value={proj?.date ?? ''}
                       onChange={v => setProject(i, 'date', v)} placeholder="March 2023" />
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
             <AddButton onClick={addProject} label="Add Project" />
           </CollapsibleSection>
@@ -936,37 +1460,115 @@ export default function ResumeBuilderClient() {
 
           {/* HONORS & AWARDS */}
           <CollapsibleSection title="Honors & Awards" open={sections.awards} onToggle={() => toggleSection('awards')}>
-            <div className="space-y-2">
-              {data.awards.map((award, i) => (
-                <div key={i} className="flex gap-2 items-end">
-                  <div className="flex-1">
-                    <label className={labelCls}>Award</label>
-                    <input className={inputCls} value={award.name}
-                      onChange={e => setAward(i, 'name', e.target.value)}
-                      placeholder="Award or recognition title" />
+            {/* Per-section apply-all */}
+            {suggestions?.awards && suggestions.awards.length > 0 && (
+              <div className="mb-3 flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    setData(d => {
+                      const awards = d.awards.map(a => ({ ...a }));
+                      for (const aw of suggestions.awards!) {
+                        if (aw.name) awards[aw.award_index].name = aw.name.suggested;
+                        if (aw.date) awards[aw.award_index].date = aw.date.suggested;
+                      }
+                      return { ...d, awards };
+                    });
+                    const keys = new Set<string>();
+                    for (const aw of suggestions.awards!) {
+                      if (aw.name) keys.add(`award_${aw.award_index}_name`);
+                      if (aw.date) keys.add(`award_${aw.award_index}_date`);
+                    }
+                    setAppliedSuggestKeys(prev => { const n = new Set(prev); keys.forEach(k => n.add(k)); return n; });
+                  }}
+                  className="px-2.5 py-1 rounded-full bg-amber-600/80 hover:bg-amber-500 text-white text-xs font-semibold transition-colors"
+                >
+                  Apply all award suggestions
+                </button>
+              </div>
+            )}
+            <div className="space-y-3">
+              {data.awards.map((award, i) => {
+                const awForAward = suggestions?.awards?.find(a => a.award_index === i);
+                const nameKey = `award_${i}_name`;
+                const dateKey = `award_${i}_date`;
+                return (
+                <div key={i}>
+                  <div className="flex gap-2 items-end">
+                    <div className="flex-1">
+                      <label className={labelCls}>Award</label>
+                      <input className={inputCls} value={award.name}
+                        onChange={e => setAward(i, 'name', e.target.value)}
+                        placeholder="Award or recognition title" />
+                    </div>
+                    <div className="w-36 shrink-0">
+                      <label className={labelCls}>Date</label>
+                      <input className={inputCls} value={award.date}
+                        onChange={e => setAward(i, 'date', e.target.value)}
+                        placeholder="Month, Year" />
+                    </div>
+                    {data.awards.length > 1 && (
+                      <button onClick={() => removeAward(i)}
+                        className="shrink-0 text-red-400 hover:text-red-300 text-lg leading-none mb-2 px-1">
+                        ×
+                      </button>
+                    )}
                   </div>
-                  <div className="w-36 shrink-0">
-                    <label className={labelCls}>Date</label>
-                    <input className={inputCls} value={award.date}
-                      onChange={e => setAward(i, 'date', e.target.value)}
-                      placeholder="Month, Year" />
-                  </div>
-                  {data.awards.length > 1 && (
-                    <button onClick={() => removeAward(i)}
-                      className="shrink-0 text-red-400 hover:text-red-300 text-lg leading-none mb-2 px-1">
-                      ×
-                    </button>
+                  {awForAward?.name && isSuggestionVisible(nameKey) && (
+                    <SuggestionCard
+                      original={awForAward.name.original}
+                      suggested={awForAward.name.suggested}
+                      applied={isSuggestionApplied(nameKey)}
+                      onReplace={() => { setAward(i, 'name', awForAward.name!.suggested); applyKey(nameKey); }}
+                      onRevert={() => { setAward(i, 'name', awForAward.name!.original); setAppliedSuggestKeys(prev => { const n = new Set(prev); n.delete(nameKey); return n; }); }}
+                      onDismiss={() => dismissKey(nameKey)}
+                    />
+                  )}
+                  {awForAward?.date && isSuggestionVisible(dateKey) && (
+                    <SuggestionCard
+                      original={awForAward.date.original}
+                      suggested={awForAward.date.suggested}
+                      applied={isSuggestionApplied(dateKey)}
+                      onReplace={() => { setAward(i, 'date', awForAward.date!.suggested); applyKey(dateKey); }}
+                      onRevert={() => { setAward(i, 'date', awForAward.date!.original); setAppliedSuggestKeys(prev => { const n = new Set(prev); n.delete(dateKey); return n; }); }}
+                      onDismiss={() => dismissKey(dateKey)}
+                    />
                   )}
                 </div>
-              ))}
+                );
+              })}
             </div>
             <AddButton onClick={addAward} label="Add Award" />
           </CollapsibleSection>
 
           {/* VOLUNTEER EXPERIENCE */}
           <CollapsibleSection title="Volunteer Experience" open={sections.volunteer} onToggle={() => toggleSection('volunteer')}>
+            {/* Per-section apply-all */}
+            {suggestions?.volunteer && suggestions.volunteer.length > 0 && (
+              <div className="mb-3 flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    setData(d => {
+                      const vol = d.volunteer.map(v => ({ ...v }));
+                      for (const vs of suggestions.volunteer!) {
+                        vol[vs.vol_index].description = vs.description.suggested;
+                      }
+                      return { ...d, volunteer: vol };
+                    });
+                    const keys = new Set<string>();
+                    for (const vs of suggestions.volunteer!) keys.add(`vol_${vs.vol_index}_desc`);
+                    setAppliedSuggestKeys(prev => { const n = new Set(prev); keys.forEach(k => n.add(k)); return n; });
+                  }}
+                  className="px-2.5 py-1 rounded-full bg-amber-600/80 hover:bg-amber-500 text-white text-xs font-semibold transition-colors"
+                >
+                  Apply all volunteer suggestions
+                </button>
+              </div>
+            )}
             <div className="space-y-4">
-              {data.volunteer.map((vol, i) => (
+              {data.volunteer.map((vol, i) => {
+                const vsForVol = suggestions?.volunteer?.find(v => v.vol_index === i);
+                const descKey = `vol_${i}_desc`;
+                return (
                 <div key={i} className={cardCls}>
                   <div className="flex justify-between items-center mb-3">
                     <span className="text-xs text-indigo-300 font-semibold">Role {i + 1}</span>
@@ -982,13 +1584,26 @@ export default function ResumeBuilderClient() {
                       onChange={v => setVol(i, 'location', v)} placeholder="City, Country" />
                     <Field label="Duration" value={vol.duration}
                       onChange={v => setVol(i, 'duration', v)} placeholder="Jan 2020 - Present" />
-                    <Field label="Description" value={vol.description}
-                      onChange={v => setVol(i, 'description', v)}
-                      placeholder="Brief description of your contributions and impact…"
-                      fullWidth textarea rows={2} />
+                    <div>
+                      <Field label="Description" value={vol.description}
+                        onChange={v => setVol(i, 'description', v)}
+                        placeholder="Brief description of your contributions and impact…"
+                        fullWidth textarea rows={2} />
+                      {vsForVol?.description && isSuggestionVisible(descKey) && (
+                        <SuggestionCard
+                          original={vsForVol.description.original}
+                          suggested={vsForVol.description.suggested}
+                          applied={isSuggestionApplied(descKey)}
+                          onReplace={() => { setVol(i, 'description', vsForVol.description!.suggested); applyKey(descKey); }}
+                          onRevert={() => { setVol(i, 'description', vsForVol.description!.original); setAppliedSuggestKeys(prev => { const n = new Set(prev); n.delete(descKey); return n; }); }}
+                          onDismiss={() => dismissKey(descKey)}
+                        />
+                      )}
+                    </div>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
             <AddButton onClick={addVol} label="Add Role" />
           </CollapsibleSection>
