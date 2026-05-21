@@ -117,7 +117,7 @@ const DEFAULT_SKILLS: SkillCategory[] = [
   { category: 'Software Engineering Concepts', items: '' },
 ];
 
-const EMPTY_PROJECT: ProjectItem = { name: '', tags: '', description: '', tech: '', date: '' };
+const EMPTY_PROJECT: ProjectItem = { name: '', tags: '', description: '', tech: '', date: '', bullets: [] };
 
 const EMPTY_PUB: PublicationItem = {
   prefix: 'Book', title: '', tags: '', description: '', tech: '', date: '',
@@ -223,7 +223,7 @@ function normalizeResumeData(partial: Partial<ResumeData> | null | undefined): R
     education: safe.education?.length ? safe.education : [{ ...EMPTY_EDU }],
     skillCategories: safe.skillCategories?.length ? safe.skillCategories : DEFAULT_SKILLS.map(s => ({ ...s })),
     experience: safe.experience?.length ? safe.experience : [{ ...EMPTY_EXP, bullets: [''] }],
-    projects: safe.projects?.length ? safe.projects : [{ ...EMPTY_PROJECT }],
+    projects: safe.projects?.length ? safe.projects.map(p => ({ ...EMPTY_PROJECT, ...p })) : [{ ...EMPTY_PROJECT }],
     publications: safe.publications?.length ? safe.publications : [{ ...EMPTY_PUB }],
     awards: safe.awards?.length ? safe.awards : [{ ...EMPTY_AWARD }],
     volunteer: safe.volunteer?.length ? safe.volunteer : [{ ...EMPTY_VOL }],
@@ -745,10 +745,33 @@ export default function ResumeBuilderClient() {
     });
 
   // ── projects ──────────────────────────────────────────────────────────────
-  const setProject = (i: number, field: keyof ProjectItem, v: string) =>
+  const setProject = (i: number, field: keyof Omit<ProjectItem, 'bullets'>, v: string) =>
     setData(d => {
       const projects = [...(d.projects ?? [])];
       projects[i] = { ...EMPTY_PROJECT, ...projects[i], [field]: v };
+      return { ...d, projects };
+    });
+  const setProjectBullet = (pi: number, bi: number, v: string) =>
+    setData(d => {
+      const projects = [...d.projects];
+      const bullets = [...projects[pi].bullets];
+      bullets[bi] = v;
+      projects[pi] = { ...projects[pi], bullets };
+      return { ...d, projects };
+    });
+  const addProjectBullet = (pi: number) =>
+    setData(d => {
+      const projects = [...d.projects];
+      projects[pi] = { ...projects[pi], bullets: [...projects[pi].bullets, ''] };
+      return { ...d, projects };
+    });
+  const removeProjectBullet = (pi: number, bi: number) =>
+    setData(d => {
+      const projects = [...d.projects];
+      projects[pi] = {
+        ...projects[pi],
+        bullets: projects[pi].bullets.filter((_, i) => i !== bi),
+      };
       return { ...d, projects };
     });
   const addProject = () =>
@@ -1381,6 +1404,31 @@ export default function ResumeBuilderClient() {
                     <Field label="Date" value={proj?.date ?? ''}
                       onChange={v => setProject(i, 'date', v)} placeholder="March 2023" />
                   </div>
+                  <label className={`${labelCls} mt-3`}>
+                    Bullet Points <span className="text-white/30">(optional, use "Title: detail" for bold prefix)</span>
+                  </label>
+                  <div className="space-y-2">
+                    {proj.bullets.map((b, bi) => (
+                      <div key={bi}>
+                        <div className="flex gap-2 items-start">
+                          <span className="text-white/40 text-sm mt-2 select-none shrink-0">○</span>
+                          <input
+                            className={inputCls}
+                            value={b}
+                            onChange={e => setProjectBullet(i, bi, e.target.value)}
+                            placeholder="Feature Name: Brief description of what you built or improved…"
+                          />
+                          {proj.bullets.length > 0 && (
+                            <button onClick={() => removeProjectBullet(i, bi)}
+                              className="shrink-0 text-red-400 hover:text-red-300 text-lg leading-none mt-1.5 px-1">
+                              ×
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <AddButton onClick={() => addProjectBullet(i)} label="Add Bullet" />
                 </div>
                 );
               })}

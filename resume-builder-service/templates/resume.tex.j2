@@ -175,6 +175,21 @@
 <% for proj in projects %>
 <% if proj.name %>
   \item \textbf{<< proj.name | e >>}<% if proj.tags %> (<< proj.tags | e >>)<% endif %><% if proj.description %>: << proj.description | e >><% endif %><% if proj.tech %>\quad\textit{Tech:} << proj.tech | e >><% endif %><% if proj.date %>\quad(<< proj.date | e >>)<% endif %>
+  <% set proj_bullets = proj.bullets | select | list %>
+  <% if proj_bullets %>
+  \begin{itemize}[
+    itemsep = 1pt,
+    parsep  = 0pt,
+    topsep  = 0pt,
+    partopsep = 0pt,
+    leftmargin = 1.2em,
+    label = {$\circ$}
+  ]
+  <% for bullet in proj_bullets %>
+    \item << bullet | e >>
+  <% endfor %>
+  \end{itemize}
+  <% endif %>
 <% endif %>
 <% endfor %>
 \end{itemize}
