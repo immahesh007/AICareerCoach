@@ -221,7 +221,7 @@ function buildBlocks(data: ResumeData, S: ReturnType<typeof getS>): Block[] {
   }
 
   // ── PROJECTS ───────────────────────────────────────────────────────────────
-  const validProjects = projects?.filter(p => p.name.trim()) ?? [];
+  const validProjects = projects?.filter(p => p?.name?.trim()) ?? [];
   if (validProjects.length) {
     blocks.push({ key: 'projects-h', el: <SectionHeader title="Projects" styles={S} />, keepWithNext: true });
     validProjects.forEach((proj, i) => {
@@ -230,11 +230,11 @@ function buildBlocks(data: ResumeData, S: ReturnType<typeof getS>): Block[] {
         el: (
           <BulletRow styles={S}>
             <span>
-              <strong>{proj.name}</strong>
-              {proj.tags && ` (${proj.tags})`}
-              {proj.description && `: ${proj.description}`}
-              {proj.tech && ` Tech: ${proj.tech}`}
-              {proj.date && ` (${proj.date})`}
+              <strong>{proj?.name ?? ''}</strong>
+              {proj?.tags ? ` (${proj.tags})` : ''}
+              {proj?.description ? `: ${proj.description}` : ''}
+              {proj?.tech ? ` Tech: ${proj.tech}` : ''}
+              {proj?.date ? ` (${proj.date})` : ''}
             </span>
           </BulletRow>
         ),

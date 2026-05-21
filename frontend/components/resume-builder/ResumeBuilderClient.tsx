@@ -10,7 +10,7 @@ import { useRouter } from 'next/navigation';
 import { getParsedResume, reparseResume } from '@/services/dashboardService';
 import { getSavedResume } from '@/services/savedResumesService';
 import { getGeneratedResume } from '@/services/jobMatchService';
-import { parsedToBuilder } from '@/utils/parsedToBuilder';
+import { parsedToBuilder, classifySkill } from '@/utils/parsedToBuilder';
 import {
   SUGGESTION_HANDOFF_KEY,
   type ApprovedSuggestionsHandoff,
@@ -62,17 +62,26 @@ function applyHandoff(base: ResumeData, h: ApprovedSuggestionsHandoff): ResumeDa
   }
 
   if (h.skills.length > 0) {
-    // Append approved skill additions to the first existing category that has
-    // any items; if none has content, fall back to the first category.
-    const targetIdx = next.skillCategories.findIndex(s => s.items.trim().length > 0);
-    const idx = targetIdx >= 0 ? targetIdx : 0;
-    if (next.skillCategories[idx]) {
-      const existing = next.skillCategories[idx].items.trim();
-      const additions = h.skills.join(', ');
-      next.skillCategories[idx] = {
-        ...next.skillCategories[idx],
-        items: existing ? `${existing}, ${additions}` : additions,
-      };
+    // Classify each approved suggestion into the appropriate category.
+    const buckets: Record<string, string[]> = {};
+    for (const skill of h.skills) {
+      const bucket = classifySkill(skill);
+      if (!buckets[bucket]) buckets[bucket] = [];
+      buckets[bucket].push(skill);
+    }
+    // Merge classified skills into the existing skill categories.
+    next.skillCategories = next.skillCategories.map(s => {
+      const additions = buckets[s.category];
+      if (!additions || additions.length === 0) return s;
+      const existing = s.items.trim();
+      const joined = additions.join(', ');
+      return { ...s, items: existing ? `${existing}, ${joined}` : joined };
+    });
+    // Append any categories not in the default list (shouldn't happen, but safe).
+    for (const [cat, items] of Object.entries(buckets)) {
+      if (!next.skillCategories.some(s => s.category === cat)) {
+        next.skillCategories.push({ category: cat, items: items.join(', ') });
+      }
     }
   }
 
@@ -100,11 +109,10 @@ const EMPTY_EXP: ExperienceItem = {
 
 const DEFAULT_SKILLS: SkillCategory[] = [
   { category: 'Languages', items: '' },
-  { category: 'Frameworks', items: '' },
-  { category: 'Tools', items: '' },
-  { category: 'Platforms', items: '' },
-  { category: 'Concepts', items: '' },
-  { category: 'Soft Skills', items: '' },
+  { category: 'Frameworks & Technologies', items: '' },
+  { category: 'Cloud & DevOps', items: '' },
+  { category: 'Tools & Platforms', items: '' },
+  { category: 'Software Engineering Concepts', items: '' },
 ];
 
 const EMPTY_PROJECT: ProjectItem = { name: '', tags: '', description: '', tech: '', date: '' };
@@ -205,6 +213,21 @@ function AddButton({ onClick, label }: { onClick: () => void; label: string }) {
   );
 }
 
+function normalizeResumeData(partial: Partial<ResumeData> | null | undefined): ResumeData {
+  const safe = partial ?? ({} as Partial<ResumeData>);
+  return {
+    basics: { ...EMPTY_BASICS, ...safe.basics },
+    summary: safe.summary ?? '',
+    education: safe.education?.length ? safe.education : [{ ...EMPTY_EDU }],
+    skillCategories: safe.skillCategories?.length ? safe.skillCategories : DEFAULT_SKILLS.map(s => ({ ...s })),
+    experience: safe.experience?.length ? safe.experience : [{ ...EMPTY_EXP, bullets: [''] }],
+    projects: safe.projects?.length ? safe.projects : [{ ...EMPTY_PROJECT }],
+    publications: safe.publications?.length ? safe.publications : [{ ...EMPTY_PUB }],
+    awards: safe.awards?.length ? safe.awards : [{ ...EMPTY_AWARD }],
+    volunteer: safe.volunteer?.length ? safe.volunteer : [{ ...EMPTY_VOL }],
+  };
+}
+
 // ─── main component ───────────────────────────────────────────────────────────
 
 export default function ResumeBuilderClient() {
@@ -281,7 +304,7 @@ export default function ResumeBuilderClient() {
     getSavedResume(savedResumeIdParam)
       .then(res => {
         if (cancelled) return;
-        setData(res.resume_data);
+        setData(normalizeResumeData(res.resume_data));
         setEditingName(res.name);
         if (res.design) {
           setDesign(res.design);
@@ -438,8 +461,8 @@ export default function ResumeBuilderClient() {
   // ── projects ──────────────────────────────────────────────────────────────
   const setProject = (i: number, field: keyof ProjectItem, v: string) =>
     setData(d => {
-      const projects = [...d.projects];
-      projects[i] = { ...projects[i], [field]: v };
+      const projects = [...(d.projects ?? [])];
+      projects[i] = { ...EMPTY_PROJECT, ...projects[i], [field]: v };
       return { ...d, projects };
     });
   const addProject = () =>
@@ -745,12 +768,11 @@ export default function ResumeBuilderClient() {
                     value={skill.items}
                     onChange={e => setSkill(i, e.target.value)}
                     placeholder={
-                      i === 0 ? 'e.g. Python, Java, C++, JavaScript, SQL' :
-                      i === 1 ? 'e.g. React, Node.js, Django, Spring Boot' :
-                      i === 2 ? 'e.g. Git, Docker, Kubernetes, PostgreSQL' :
-                      i === 3 ? 'e.g. Linux, AWS, GCP, Azure' :
-                      i === 4 ? 'e.g. OOP, Design Patterns, RESTful APIs, Distributed Systems' :
-                               'e.g. Leadership, Communication, Time Management'
+                      i === 0 ? 'e.g. Python, Java, SQL, MySQL, JavaScript, TypeScript' :
+                      i === 1 ? 'e.g. Flask, Django, React, PySpark, Apache Kafka, MongoDB' :
+                      i === 2 ? 'e.g. AWS, Docker, Kubernetes, Git, CI/CD, Linux, Terraform' :
+                      i === 3 ? 'e.g. JIRA, VS Code, Postman, IntelliJ, Figma, Swagger' :
+                               'e.g. DDD, OOP, RESTful APIs, Design Patterns, System Design, Data Structures'
                     }
                   />
                 </div>
@@ -811,29 +833,29 @@ export default function ResumeBuilderClient() {
           {/* PROJECTS */}
           <CollapsibleSection title="Projects" open={sections.projects} onToggle={() => toggleSection('projects')}>
             <div className="space-y-4">
-              {data.projects.map((proj, i) => (
+              {(data.projects ?? []).map((proj, i) => (
                 <div key={i} className={cardCls}>
                   <div className="flex justify-between items-center mb-3">
                     <span className="text-xs text-indigo-300 font-semibold">Project {i + 1}</span>
-                    {data.projects.length > 1 && (
+                    {(data.projects ?? []).length > 1 && (
                       <button onClick={() => removeProject(i)} className={removeBtnCls}>Remove</button>
                     )}
                   </div>
                   <div className="grid grid-cols-2 gap-3">
-                    <Field label="Project Name" value={proj.name}
+                    <Field label="Project Name" value={proj?.name ?? ''}
                       onChange={v => setProject(i, 'name', v)}
                       placeholder="Your Project Name" fullWidth />
-                    <Field label="Tags / Keywords" value={proj.tags}
+                    <Field label="Tags / Keywords" value={proj?.tags ?? ''}
                       onChange={v => setProject(i, 'tags', v)}
                       placeholder="Machine Learning, Web App, Open Source" fullWidth />
-                    <Field label="Description" value={proj.description}
+                    <Field label="Description" value={proj?.description ?? ''}
                       onChange={v => setProject(i, 'description', v)}
                       placeholder="Brief description of what the project does and its impact…"
                       fullWidth textarea rows={2} />
-                    <Field label="Tech Stack" value={proj.tech}
+                    <Field label="Tech Stack" value={proj?.tech ?? ''}
                       onChange={v => setProject(i, 'tech', v)}
                       placeholder="Python, React, PostgreSQL, Docker" />
-                    <Field label="Date" value={proj.date}
+                    <Field label="Date" value={proj?.date ?? ''}
                       onChange={v => setProject(i, 'date', v)} placeholder="March 2023" />
                   </div>
                 </div>

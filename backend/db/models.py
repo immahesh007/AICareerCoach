@@ -130,7 +130,10 @@ class JobMatch(Base):
     match_results = Column(JSONB, nullable=False)
     matched_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
 
-    __table_args__ = (Index("ix_job_matches_resume_id", "resume_id"),)
+    __table_args__ = (
+        Index("ix_job_matches_resume_id", "resume_id"),
+        UniqueConstraint("resume_id", name="uq_job_matches_resume_id"),
+    )
 
 
 class JobMatchBatch(Base):

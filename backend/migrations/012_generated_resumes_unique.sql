@@ -9,5 +9,19 @@ WHERE a.resume_id = b.resume_id
   AND a.job_id = b.job_id
   AND a.created_at < b.created_at;
 
-CREATE UNIQUE INDEX IF NOT EXISTS uq_job_generated_resumes_resume_job
-    ON job_generated_resumes (resume_id, job_id);
+-- Drop the constraint or index if it exists in any form, then recreate.
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'uq_job_generated_resumes_resume_job'
+    ) THEN
+        ALTER TABLE job_generated_resumes DROP CONSTRAINT uq_job_generated_resumes_resume_job;
+    END IF;
+END $$;
+
+-- Drop the index form if it exists (from a previous run of this migration).
+DROP INDEX IF EXISTS uq_job_generated_resumes_resume_job;
+
+-- Create the unique constraint (not just an index) so ON CONFLICT ON CONSTRAINT works.
+ALTER TABLE job_generated_resumes
+    ADD CONSTRAINT uq_job_generated_resumes_resume_job UNIQUE (resume_id, job_id);
