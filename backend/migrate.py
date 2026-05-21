@@ -4,6 +4,9 @@ import os
 import pathlib
 import asyncpg
 
+from dotenv import load_dotenv
+load_dotenv(pathlib.Path(__file__).parent / ".env")
+
 
 async def run():
     url = os.environ["DATABASE_URL"]

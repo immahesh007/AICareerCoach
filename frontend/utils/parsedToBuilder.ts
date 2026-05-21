@@ -61,11 +61,10 @@ const EMPTY_VOL: VolunteerItem = { org: '', location: '', description: '', durat
 
 const DEFAULT_SKILL_CATS: SkillCategory[] = [
   { category: 'Languages', items: '' },
-  { category: 'Frameworks', items: '' },
-  { category: 'Tools', items: '' },
-  { category: 'Platforms', items: '' },
-  { category: 'Concepts', items: '' },
-  { category: 'Soft Skills', items: '' },
+  { category: 'Frameworks & Technologies', items: '' },
+  { category: 'Cloud & DevOps', items: '' },
+  { category: 'Tools & Platforms', items: '' },
+  { category: 'Software Engineering Concepts', items: '' },
 ];
 
 // LLM may emit description as one paragraph or pre-split bullets joined by newlines / bullet glyphs.
@@ -136,18 +135,18 @@ function mapEducation(p: ParsedResumeData): EducationItem[] {
   }));
 }
 
-type SkillBucket = 'Languages' | 'Frameworks' | 'Tools' | 'Platforms' | 'Concepts' | 'Soft Skills';
+type SkillBucket = 'Languages' | 'Frameworks & Technologies' | 'Cloud & DevOps' | 'Tools & Platforms' | 'Software Engineering Concepts';
 
 const LANGUAGE_SKILLS = new Set([
   'c', 'c++', 'c/c++', 'c#', 'python', 'java', 'javascript', 'js', 'typescript', 'ts',
   'go', 'golang', 'rust', 'ruby', 'php', 'swift', 'kotlin', 'scala', 'r', 'matlab',
-  'perl', 'bash', 'shell', 'sql', 'plsql', 'pl/sql', 'tsql', 't-sql', 'html', 'html5',
-  'css', 'css3', 'sass', 'scss', 'less', 'lua', 'dart', 'objective-c', 'haskell',
-  'elixir', 'erlang', 'clojure', 'f#', 'vb', 'vb.net', 'assembly', 'cobol', 'fortran',
-  'groovy', 'solidity',
+  'perl', 'bash', 'shell', 'sql', 'mysql', 'postgresql', 'plsql', 'pl/sql', 'tsql',
+  't-sql', 'html', 'html5', 'css', 'css3', 'sass', 'scss', 'less', 'lua', 'dart',
+  'objective-c', 'haskell', 'elixir', 'erlang', 'clojure', 'f#', 'vb', 'vb.net',
+  'assembly', 'cobol', 'fortran', 'groovy', 'solidity',
 ]);
 
-const FRAMEWORK_SKILLS = new Set([
+const FRAMEWORK_TECH_SKILLS = new Set([
   'react', 'react.js', 'reactjs', 'angular', 'angular.js', 'angularjs', 'vue', 'vue.js',
   'vuejs', 'svelte', 'next.js', 'nextjs', 'nuxt', 'nuxt.js', 'gatsby', 'remix',
   'django', 'flask', 'fastapi', 'spring', 'spring boot', 'spring mvc', 'spring data',
@@ -159,22 +158,59 @@ const FRAMEWORK_SKILLS = new Set([
   'sequelize', 'mongoose', 'hibernate', 'jpa', 'flutter', 'react native', 'xamarin',
   'electron', 'qt', 'jest', 'mocha', 'cypress', 'playwright', 'selenium', 'junit',
   'pytest', 'rspec',
+  // Big data / streaming
+  'pyspark', 'spark', 'spark streaming', 'apache spark', 'apache kafka', 'kafka',
+  'hadoop', 'hive', 'airflow',
+  // Databases
+  'mongodb', 'cassandra', 'redis', 'elasticsearch', 'dynamodb', 'couchdb',
+  'neo4j', 'snowflake', 'bigquery', 'redshift',
+  // ML / AI frameworks
+  'spacy', 'nltk', 'opencv', 'hugging face', 'transformers', 'langchain',
+  'llamaindex', 'mlflow', 'kubeflow', 'dagster',
+  // Mobile / desktop
+  'swiftui', 'uikit', 'jetpack compose',
+  // Other
+  'grpc', 'protobuf', 'thrift', 'rabbitmq', 'celery',
 ]);
 
-const PLATFORM_SKILLS = new Set([
+const CLOUD_DEVOPS_SKILLS = new Set([
   'aws', 'amazon web services', 'gcp', 'google cloud', 'google cloud platform',
-  'azure', 'microsoft azure', 'linux', 'unix', 'windows', 'macos', 'mac os',
-  'ubuntu', 'debian', 'centos', 'redhat', 'rhel', 'fedora', 'android', 'ios',
-  'heroku', 'netlify', 'vercel', 'firebase', 'digitalocean', 'cloudflare',
-  'oracle cloud', 'ibm cloud', 'alibaba cloud', 'openshift',
+  'azure', 'microsoft azure', 'linux', 'unix', 'ubuntu', 'debian', 'centos',
+  'redhat', 'rhel', 'fedora', 'heroku', 'netlify', 'vercel', 'firebase',
+  'digitalocean', 'cloudflare', 'oracle cloud', 'ibm cloud', 'alibaba cloud',
+  'openshift',
+  // Containerization & orchestration
+  'docker', 'kubernetes', 'k8s', 'docker compose', 'podman', 'containerd',
+  'helm', 'istio', 'terraform', 'ansible', 'puppet', 'chef', 'cloudformation',
+  'pulumi',
+  // CI/CD
+  'ci/cd', 'ci/cd pipeline', 'continuous integration', 'continuous deployment',
+  'continuous delivery', 'jenkins', 'github actions', 'gitlab ci', 'gitlab',
+  'circleci', 'travis ci', 'bamboo', 'argo cd', 'argocd', 'spinnaker',
+  'bitbucket pipelines', 'azure devops',
+  // Version control
+  'git', 'github', 'gitlab', 'bitbucket', 'svn', 'subversion',
 ]);
 
-const CONCEPT_SKILLS = new Set([
+const TOOLS_PLATFORMS_SKILLS = new Set([
+  'jira', 'confluence', 'trello', 'asana', 'notion', 'slack', 'teams',
+  'postman', 'insomnia', 'swagger', 'openapi',
+  'vs code', 'visual studio code', 'intellij', 'intellij idea', 'eclipse',
+  'pycharm', 'webstorm', 'android studio', 'xcode', 'vim', 'neovim',
+  'figma', 'sketch', 'adobe xd', 'zeplin', 'invision',
+  'maven', 'gradle', 'npm', 'yarn', 'pnpm', 'pip', 'conda', 'poetry',
+  'webpack', 'vite', 'esbuild', 'babel', 'eslint', 'prettier',
+  'splunk', 'datadog', 'grafana', 'prometheus', 'new relic',
+  'nginx', 'apache', 'tomcat', 'iis',
+]);
+
+const ENGINEERING_CONCEPT_SKILLS = new Set([
   'oop', 'oops', 'object-oriented programming', 'object oriented programming',
   'functional programming', 'fp', 'procedural programming',
   'design patterns', 'design pattern',
+  'ddd', 'domain-driven design', 'domain driven design',
   'rest', 'restful', 'rest api', 'rest apis', 'restful api', 'restful apis',
-  'graphql api', 'soap', 'grpc',
+  'graphql api', 'soap',
   'distributed systems', 'distributed computing', 'distributed system',
   'system design', 'microservices', 'monolithic architecture',
   'soa', 'service-oriented architecture', 'event-driven architecture',
@@ -187,51 +223,67 @@ const CONCEPT_SKILLS = new Set([
   'nlp', 'natural language processing', 'computer vision',
   'cryptography', 'networking', 'tcp/ip', 'operating systems',
   'database design', 'normalization', 'big data', 'etl',
-  'ci/cd', 'continuous integration', 'continuous deployment',
 ]);
 
-const SOFT_SKILL_HINTS = [
-  'leadership', 'communication', 'management', 'teamwork', 'collaboration',
-  'problem solving', 'problem-solving', 'critical thinking', 'time management',
-  'organization', 'organizational', 'creativity', 'adaptability', 'mentoring',
-  'mentorship', 'public speaking', 'presentation', 'negotiation', 'analytical',
-  'interpersonal', 'decision making', 'decision-making', 'conflict resolution',
-  'emotional intelligence',
-];
-
-function classifySkill(skill: string): SkillBucket {
+function _classifySkill(skill: string): SkillBucket {
   const s = skill.toLowerCase().trim();
   if (LANGUAGE_SKILLS.has(s)) return 'Languages';
-  if (FRAMEWORK_SKILLS.has(s)) return 'Frameworks';
-  if (PLATFORM_SKILLS.has(s)) return 'Platforms';
-  if (CONCEPT_SKILLS.has(s)) return 'Concepts';
-  if (SOFT_SKILL_HINTS.some(k => s.includes(k))) return 'Soft Skills';
+  if (FRAMEWORK_TECH_SKILLS.has(s)) return 'Frameworks & Technologies';
+  if (CLOUD_DEVOPS_SKILLS.has(s)) return 'Cloud & DevOps';
+  if (TOOLS_PLATFORMS_SKILLS.has(s)) return 'Tools & Platforms';
+  if (ENGINEERING_CONCEPT_SKILLS.has(s)) return 'Software Engineering Concepts';
   // Fuzzy concept catches for variants ("RESTful Web Services", "Microservices Architecture")
-  if (/\b(restful|rest\s+api|microservices|distributed|design\s+patterns?|system\s+design|data\s+structures|algorithms)\b/.test(s)) {
-    return 'Concepts';
+  if (/\b(restful|rest\s+api|microservices|distributed|design\s+patterns?|system\s+design|data\s+structures|algorithms|domain.driven)\b/.test(s)) {
+    return 'Software Engineering Concepts';
   }
-  // Fuzzy platform catches (e.g. "AWS Lambda", "Azure Functions", "Google Cloud Run")
-  if (/\b(aws|azure|gcp|linux|ubuntu|debian|cloud)\b/.test(s)) return 'Platforms';
-  // Default: technical-but-uncategorized goes into Tools
-  return 'Tools';
+  // Fuzzy cloud/devops catches (e.g. "AWS Lambda", "Azure Functions", "Google Cloud Run")
+  if (/\b(aws|azure|gcp|docker|kubernetes|linux|ubuntu|debian|cloud|ci\/cd|jenkins|terraform|ansible|git\b|github)\b/.test(s)) return 'Cloud & DevOps';
+  // Fuzzy framework/tech catches (e.g. "Apache Spark", "Spring Cloud")
+  if (/\b(spark|kafka|flask|django|react|angular|spring|node\b|express|pytorch|tensorflow|mongodb)\b/.test(s)) return 'Frameworks & Technologies';
+  // Default: uncategorized technical skill goes into Tools & Platforms
+  return 'Tools & Platforms';
+}
+
+const _PREFIX_RE = /^[\w\s&/()+]+[:：]\s*/;
+
+function _splitCompoundSkills(skills: string[]): string[] {
+  const result: string[] = [];
+  for (const skill of skills) {
+    let cleaned = skill;
+    // Strip category prefix like "Backend: " or "Data & Streaming: "
+    if (_PREFIX_RE.test(cleaned)) {
+      cleaned = cleaned.replace(_PREFIX_RE, '').trim();
+    }
+    // If comma-separated, split into individual skills
+    if (cleaned.includes(',')) {
+      const parts = cleaned.split(',').map(s => s.trim()).filter(Boolean);
+      result.push(...parts);
+    } else {
+      result.push(cleaned);
+    }
+  }
+  return result;
 }
 
 function mapSkills(p: ParsedResumeData): SkillCategory[] {
-  const skills = (p.skills ?? [])
+  const raw = (p.skills ?? [])
     .map(s => String(s).trim())
     .filter(Boolean);
+  const skills = _splitCompoundSkills(raw);
   if (skills.length === 0) return DEFAULT_SKILL_CATS.map(s => ({ ...s }));
 
   const buckets: Record<SkillBucket, string[]> = {
     'Languages': [],
-    'Frameworks': [],
-    'Tools': [],
-    'Platforms': [],
-    'Concepts': [],
-    'Soft Skills': [],
+    'Frameworks & Technologies': [],
+    'Cloud & DevOps': [],
+    'Tools & Platforms': [],
+    'Software Engineering Concepts': [],
   };
   for (const skill of skills) {
-    buckets[classifySkill(skill)].push(skill);
+    const bucket = _classifySkill(skill);
+    if (buckets[bucket]) {
+      buckets[bucket].push(skill);
+    }
   }
 
   return DEFAULT_SKILL_CATS.map(({ category }) => ({
@@ -261,6 +313,10 @@ function mapProjects(p: ParsedResumeData): ProjectItem[] {
     description: pr.description ?? '',
     tech: toCommaList(pr.technologies),
   }));
+}
+
+export function classifySkill(skill: string): string {
+  return _classifySkill(skill);
 }
 
 export function parsedToBuilder(parsed: Record<string, unknown>): ResumeData {

@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import re
 import uuid
 from typing import Optional
 
@@ -485,14 +486,49 @@ async def get_generated_resume(
 
 _SKILL_CATS = [
     ("Languages", {"c", "c++", "c#", "python", "java", "javascript", "typescript", "go",
-     "golang", "rust", "ruby", "php", "swift", "kotlin", "scala", "r", "bash", "sql", "html", "css"}),
-    ("Frameworks", {"react", "angular", "vue", "django", "flask", "fastapi", "spring",
-     "express", "rails", "laravel", "tensorflow", "pytorch", "pandas", "numpy"}),
-    ("Platforms", {"aws", "gcp", "azure", "linux", "docker", "kubernetes", "heroku"}),
-    ("Concepts", {"rest", "graphql", "microservices", "distributed systems", "system design",
-     "machine learning", "agile", "ci/cd", "tdd"}),
-    ("Soft Skills", {"leadership", "communication", "teamwork", "mentoring"}),
+     "golang", "rust", "ruby", "php", "swift", "kotlin", "scala", "r", "bash", "sql",
+     "mysql", "postgresql", "html", "css"}),
+    ("Frameworks & Technologies", {"react", "angular", "vue", "django", "flask", "fastapi",
+     "spring", "express", "rails", "laravel", "tensorflow", "pytorch", "pandas", "numpy",
+     "pyspark", "spark", "kafka", "mongodb", "hadoop", "airflow", "node.js", "nodejs",
+     "redis", "elasticsearch", "graphql", "grpc", "rabbitmq"}),
+    ("Cloud & DevOps", {"aws", "gcp", "azure", "linux", "docker", "kubernetes",
+     "ci/cd", "git", "jenkins", "terraform", "ansible", "github actions", "heroku",
+     "openshift", "cloudformation"}),
+    ("Tools & Platforms", {"jira", "confluence", "postman", "swagger", "vs code",
+     "intellij", "eclipse", "figma", "maven", "gradle", "npm", "nginx", "splunk",
+     "grafana", "datadog", "prometheus"}),
+    ("Software Engineering Concepts", {"oop", "oops", "design patterns", "ddd",
+     "domain-driven design", "rest", "restful", "rest api", "microservices",
+     "distributed systems", "system design", "data structures", "algorithms",
+     "machine learning", "agile", "tdd", "bdd", "sdlc", "mvc", "mvvm", "etl"}),
 ]
+
+
+_PREFIX_RE = re.compile(r'^[\w\s&/()+]+[:：]\s*')
+
+
+def _split_compound_skills(skills: list) -> list:
+    """Split compound/grouped skill strings into individual skill strings.
+
+    Handles:
+      "Category: skill1, skill2, skill3"  -> ["skill1", "skill2", "skill3"]
+      "skill1, skill2, skill3"            -> ["skill1", "skill2", "skill3"]
+      "Python"                            -> ["Python"]
+    """
+    result = []
+    for skill in skills:
+        cleaned = str(skill)
+        # Strip category prefix like "Backend: " or "Data & Streaming: "
+        if _PREFIX_RE.match(cleaned):
+            cleaned = _PREFIX_RE.sub('', cleaned).strip()
+        # If comma-separated, split into individual skills
+        if ',' in cleaned:
+            parts = [s.strip() for s in cleaned.split(',') if s.strip()]
+            result.extend(parts)
+        else:
+            result.append(cleaned)
+    return result
 
 
 def _classify_skill(skill: str) -> str:
@@ -500,17 +536,18 @@ def _classify_skill(skill: str) -> str:
     for cat, keywords in _SKILL_CATS:
         if s in keywords or any(kw in s for kw in keywords if len(kw) > 3):
             return cat
-    return "Tools"
+    return "Tools & Platforms"
 
 
 def _parsed_to_builder(parsed: dict) -> dict:
-    skills = parsed.get("skills") or []
+    skills = _split_compound_skills(parsed.get("skills") or [])
     buckets: dict[str, list[str]] = {c: [] for c, _ in _SKILL_CATS}
-    buckets["Tools"] = []
     for s in skills:
         s = str(s).strip()
         if s:
-            buckets[_classify_skill(s)].append(s)
+            bucket = _classify_skill(s)
+            if bucket in buckets:
+                buckets[bucket].append(s)
 
     skill_categories = [
         {"category": cat, "items": ", ".join(items)}

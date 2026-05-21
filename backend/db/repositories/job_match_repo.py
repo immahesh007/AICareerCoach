@@ -17,37 +17,28 @@ async def upsert_job_match(
     user_id: str,
     match_results: dict,
 ) -> JobMatch:
-    # Fetch the newest row — tolerate duplicates (unique constraint added in 011).
-    result = await db.execute(
-        select(JobMatch)
-        .where(JobMatch.resume_id == resume_id)
-        .order_by(JobMatch.matched_at.desc())
-        .limit(1)
-    )
-    record = result.scalar_one_or_none()
-    if record is None:
-        record = JobMatch(
+    stmt = (
+        pg_insert(JobMatch)
+        .values(
             id=uuid.uuid4(),
             resume_id=resume_id,
             user_id=user_id,
             match_results=match_results,
         )
-        db.add(record)
-        await db.flush()
-        await db.refresh(record)
-    else:
-        # Update the newest row and delete any older duplicates.
-        await db.execute(
-            sa_update(JobMatch)
-            .where(JobMatch.id == record.id)
-            .values(match_results=match_results, matched_at=func.now())
+        .on_conflict_do_update(
+            constraint="uq_job_matches_resume_id",
+            set_={
+                "user_id": user_id,
+                "match_results": match_results,
+                "matched_at": func.now(),
+            },
         )
-        from sqlalchemy import delete as sa_delete
-        await db.execute(
-            sa_delete(JobMatch)
-            .where(JobMatch.resume_id == resume_id, JobMatch.id != record.id)
-        )
-        await db.refresh(record)
+        .returning(JobMatch)
+    )
+    result = await db.execute(stmt)
+    record = result.scalar_one()
+    await db.flush()
+    return record
     return record
 
 
@@ -226,7 +217,7 @@ async def insert_generated_resume(
             s3_key=s3_key,
         )
         .on_conflict_do_update(
-            constraint="uq_job_generated_resumes_resume_job",
+            index_elements=["resume_id", "job_id"],
             set_={
                 "user_id": user_id,
                 "job_title": job_title,

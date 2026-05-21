@@ -22,6 +22,13 @@ CRITICAL — experience.description rules:
 - Copy each bullet's text as-is (you may strip leading bullet glyphs like "•", "-", "*", "·").
 - If you are tempted to shorten because the output feels long: do not. Output ALL bullets.
 
+CRITICAL — skills rules:
+- Return EACH skill as its own individual string in the skills array.
+- DO NOT group multiple skills into one comma-separated string. Each element must be ONE skill.
+- DO NOT prefix skills with category labels (e.g. "Backend: Python, Flask" is WRONG; you would instead return "Python", "Flask" as separate strings).
+- Correct: ["Python", "Flask", "Django", "Docker", "Kubernetes"]
+- Incorrect: ["Backend: Python, Flask, Django", "DevOps: Docker, Kubernetes"]
+
 Return ONLY a valid JSON object with these fields (omit any field not present in the resume):
 {
   "name": "string",
@@ -29,7 +36,7 @@ Return ONLY a valid JSON object with these fields (omit any field not present in
   "phone": "string",
   "linkedin": "string",
   "summary": "string",
-  "skills": ["string"],
+  "skills": ["skill1", "skill2", "skill3"],
   "experience": [{"title": "string", "company": "string", "duration": "string", "description": ["bullet 1 verbatim", "bullet 2 verbatim", "bullet 3 verbatim", "..."]}],
   "education": [{"degree": "string", "institution": "string", "year": "string"}],
   "projects": [{"name": "string", "description": "string", "technologies": ["string"]}],
@@ -193,7 +200,7 @@ You receive:
 
 Instructions:
 - Rewrite the summary to naturally mention relevant missing skills and align with the job. Keep it 2-4 sentences.
-- Add missing skills to the skills array (only add skills that plausibly fit the candidate's background based on their experience).
+- Add missing skills to the skills array as INDIVIDUAL strings (one skill per entry, no grouping, no category prefixes).
 - Do NOT modify experience bullets — those must stay verbatim.
 - Keep the name, email, phone, linkedin, education, and all other fields unchanged.
 

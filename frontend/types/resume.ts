@@ -89,8 +89,8 @@ export interface ResumeDesignSettings {
 }
 
 export const DEFAULT_DESIGN_SETTINGS: ResumeDesignSettings = {
-  fontSize: 'normal',
-  marginSize: 'normal',
+  fontSize: 'large',
+  marginSize: 'tight',
   fontFamily: 'texgyre',
   bulletStyle: 'dash',
   spacing: 'normal',
