@@ -28,6 +28,7 @@ export default function SaveResumeModal({ isOpen, data, design, onClose, onSaved
       setName(`${base} — ${today}`);
       setCompany('');
       setError(null);
+      setSubmitting(false);
     }
   }, [isOpen, data.basics.name]);
 
